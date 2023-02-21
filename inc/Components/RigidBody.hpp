@@ -9,4 +9,4 @@ struct RigidBody
     vec3 velocity;
 };
 
-#endif // RIGID_BOYD_HPP
+#endif // RIGID_BODY_HPP

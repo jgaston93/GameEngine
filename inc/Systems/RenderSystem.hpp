@@ -1,10 +1,6 @@
 #ifndef RENDER_SYSTEM_HPP
 #define RENDER_SYSTEM_HPP
 
-#include <glad/gl.h>
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
-
 #include "System.hpp"
 #include "InputMap.hpp"
 #include "linmath.h"
@@ -23,7 +19,7 @@ struct VertexData
 class RenderSystem : public System
 {
     public:
-    RenderSystem(MessageBus& message_bus, uint32_t mvp_location);
+    RenderSystem(MessageBus& message_bus);
     ~RenderSystem();
 
     void HandleMessage(Message message);
@@ -31,7 +27,7 @@ class RenderSystem : public System
     void Update(float delta_time);
 
     private:
-
+    uint32_t m_shader_program;
     uint32_t m_mvp_location;
     
     vec3 m_eye = { 0, 0, 0 };

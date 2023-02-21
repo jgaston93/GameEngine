@@ -10,7 +10,8 @@ ComponentManager::ComponentManager(uint32_t num_entities) : m_transform_pool(num
                                                             m_animation_pool(num_entities),
                                                             m_label_texture_pool(num_entities),
                                                             m_timer_pool(num_entities),
-                                                            m_bounds_pool(num_entities)
+                                                            m_bounds_pool(num_entities),
+                                                            m_label_pool(num_entities)
 {
 
 }
@@ -138,4 +139,16 @@ template <>
 Bounds& ComponentManager::GetComponent<Bounds>(uint32_t entity_id)
 {
     return m_bounds_pool.GetComponent(entity_id);
+}
+
+template <>
+void ComponentManager::AddComponent<Label>(uint32_t entity_id, Label component)
+{
+    m_label_pool.AddComponent(entity_id, component);
+}
+
+template <>
+Label& ComponentManager::GetComponent<Label>(uint32_t entity_id)
+{
+    return m_label_pool.GetComponent(entity_id);
 }

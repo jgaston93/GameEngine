@@ -12,6 +12,7 @@
 #include "LabelTexture.hpp"
 #include "Timer.hpp"
 #include "Bounds.hpp"
+#include "Label.hpp"
 
 class ComponentManager
 {
@@ -36,6 +37,7 @@ class ComponentManager
     ComponentPool<LabelTexture> m_label_texture_pool;
     ComponentPool<Timer> m_timer_pool;
     ComponentPool<Bounds> m_bounds_pool;
+    ComponentPool<Label> m_label_pool;
 };
 
 #endif // COMPONENT_MANAGER_HPP

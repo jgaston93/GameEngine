@@ -2,18 +2,88 @@
 #include <algorithm>
 #include <cstdio>
 
+#include <glad/gl.h>
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
 #include "RenderSystem.hpp"
 
-struct EntityDistance {
-    uint32_t id;
-    float distance;
-};
+static const char* quad_vertex_shader_text =
+"#version 330\n"
+"uniform mat4 MVP;\n"
+"layout(location = 0)in vec3 vPos;\n"
+"layout(location = 1)in vec3 vColor;\n"
+"out vec3 fColor;\n"
+"void main()\n"
+"{\n"
+"    gl_Position = MVP * vec4(vPos, 1.0);\n"
+"    fColor = vColor;\n"
+"}\n";
+ 
+static const char* quad_fragment_shader_text =
+"#version 330\n"
+"in vec3 fColor\n;"
+"out vec3 fragColor;\n"
+"void main()\n"
+"{\n"
+"    fragColor = fColor;\n"
+"}\n";
 
-RenderSystem::RenderSystem(MessageBus& message_bus, uint32_t mvp_location) : 
-    System(message_bus, RENDER_SYSTEM_SIGNATURE),
-    m_mvp_location(mvp_location)
+RenderSystem::RenderSystem(MessageBus& message_bus) : 
+    System(message_bus, RENDER_SYSTEM_SIGNATURE)
 {
+    GLuint quad_render_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(quad_render_vertex_shader, 1, &quad_vertex_shader_text, NULL);
+    glCompileShader(quad_render_vertex_shader);
 
+    GLint isCompiled = 0;
+    glGetShaderiv(quad_render_vertex_shader, GL_COMPILE_STATUS, &isCompiled);
+    if(isCompiled == GL_FALSE)
+    {
+        GLint maxLength = 0;
+        glGetShaderiv(quad_render_vertex_shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        std::vector<GLchar> errorLog(maxLength);
+        glGetShaderInfoLog(quad_render_vertex_shader, maxLength, &maxLength, &errorLog[0]);
+        printf("%s\n", errorLog.data());
+
+        // Provide the infolog in whatever manor you deem best.
+        // Exit with failure.
+        glDeleteShader(quad_render_vertex_shader); // Don't leak the shader.
+        return;
+    }
+ 
+    GLuint quad_render_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(quad_render_fragment_shader, 1, &quad_fragment_shader_text, NULL);
+    glCompileShader(quad_render_fragment_shader);
+
+    isCompiled = 0;
+    glGetShaderiv(quad_render_fragment_shader, GL_COMPILE_STATUS, &isCompiled);
+    if(isCompiled == GL_FALSE)
+    {
+        GLint maxLength = 0;
+        glGetShaderiv(quad_render_fragment_shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        std::vector<GLchar> errorLog(maxLength);
+        glGetShaderInfoLog(quad_render_fragment_shader, maxLength, &maxLength, &errorLog[0]);
+        printf("%s\n", errorLog.data());
+
+        // Provide the infolog in whatever manor you deem best.
+        // Exit with failure.
+        glDeleteShader(quad_render_fragment_shader); // Don't leak the shader.
+        return;
+    }
+ 
+    m_shader_program = glCreateProgram();
+    glAttachShader(m_shader_program, quad_render_vertex_shader);
+    glAttachShader(m_shader_program, quad_render_fragment_shader);
+    glLinkProgram(m_shader_program);
+    glDeleteShader(quad_render_vertex_shader);
+    glDeleteShader(quad_render_fragment_shader);
+    
+    m_mvp_location = glGetUniformLocation(m_shader_program, "MVP");
 }
 
 RenderSystem::~RenderSystem()
@@ -102,6 +172,18 @@ void RenderSystem::Update(float delta_time)
     m_look[0] = m_eye[0] + result[0];
     m_look[1] = m_eye[1] + result[1];
     m_look[2] = m_eye[2] + result[2];
+    
+    glUseProgram(m_shader_program);
+ 
+    uint32_t vpos_location = glGetAttribLocation(m_shader_program, "vPos");
+    uint32_t vcolor_location = glGetAttribLocation(m_shader_program, "vColor");
+ 
+    glEnableVertexAttribArray(vpos_location);
+    glVertexAttribPointer(vpos_location, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(VertexData), (void*) 0);
+    glEnableVertexAttribArray(vcolor_location);
+    glVertexAttribPointer(vcolor_location, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(VertexData), (void*) (sizeof(float) * 3));
 
     uint32_t num_entities = m_entity_manager->GetNumEntities();
     
