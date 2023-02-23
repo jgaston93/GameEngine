@@ -18,7 +18,11 @@ class RenderSystem : public System
 
     private:
     int32_t m_shader_program;
-    int32_t m_mvp_location;
+    int32_t m_xray_program;
+    int32_t m_mv_location;
+    int32_t m_p_location;
+    int32_t m_xray_mv_location;
+    int32_t m_xray_p_location;
     uint32_t m_texure_sampler_location;
 
     uint32_t m_texture_slots[5];

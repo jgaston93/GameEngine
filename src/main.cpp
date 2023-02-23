@@ -91,7 +91,7 @@ int main(int argv, char* args[])
     
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     glGenBuffers(1, &vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
@@ -113,7 +113,7 @@ int main(int argv, char* args[])
         input_map->AddInput(input_list[i]);
     }
     
-    const uint32_t num_entities = 6;
+    const uint32_t num_entities = 9;
     EntityManager entity_manager(num_entities);
     ComponentManager component_manager(num_entities);
     GenerateEntities(entity_manager, component_manager);
@@ -216,7 +216,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     // Wall Entity
     transform.position[0] = 0;
     transform.position[1] = 1.25;
-    transform.position[2] = -10;
+    transform.position[2] = -1;
     transform.rotation[0] = 0;
     transform.rotation[1] = 0;
     transform.rotation[2] = 0;
@@ -240,12 +240,13 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     
     bounding_box.extent[0] = 32;
     bounding_box.extent[1] = 2.5;
-    bounding_box.extent[2] = 2;
+    bounding_box.extent[2] = 1;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
                                                     PHYSICS_SYSTEM_SIGNATURE | 
-                                                    COLLISION_SYSTEM_SIGNATURE);
+                                                    COLLISION_SYSTEM_SIGNATURE |
+                                                    XRAY_SYSTEM_SIGNATURE);
 
     component_manager.AddComponent<Transform>(entity_id, transform);
     component_manager.AddComponent<Quad>(entity_id, quad);
@@ -257,7 +258,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     // Wall Entity
     transform.position[0] = 0;
     transform.position[1] = 1.25;
-    transform.position[2] = 10;
+    transform.position[2] = 1;
     transform.rotation[0] = 0;
     transform.rotation[1] = 0;
     transform.rotation[2] = 0;
@@ -279,7 +280,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     
     bounding_box.extent[0] = 32;
     bounding_box.extent[1] = 2.5;
-    bounding_box.extent[2] = 2;
+    bounding_box.extent[2] = 1;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
@@ -304,7 +305,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     transform.scale[1] = 0;
     transform.scale[2] = 0;
     
-    quad.extent[0] = 20;
+    quad.extent[0] = 2;
     quad.extent[1] = 2.5;
     
     texture.texture_index = 2;
@@ -316,9 +317,9 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     texture.color[1] = 1;
     texture.color[2] = 0;
     
-    bounding_box.extent[0] = 2;
+    bounding_box.extent[0] = 1;
     bounding_box.extent[1] = 2.5;
-    bounding_box.extent[2] = 20;
+    bounding_box.extent[2] = 2;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
@@ -343,7 +344,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     transform.scale[1] = 0;
     transform.scale[2] = 0;
     
-    quad.extent[0] = 20;
+    quad.extent[0] = 2;
     quad.extent[1] = 2.5;
     
     texture.texture_index = 2;
@@ -355,9 +356,9 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     texture.color[1] = 1;
     texture.color[2] = 0;
     
-    bounding_box.extent[0] = 2;
+    bounding_box.extent[0] = 1;
     bounding_box.extent[1] = 2.5;
-    bounding_box.extent[2] = 20;
+    bounding_box.extent[2] = 2;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
@@ -368,6 +369,105 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     component_manager.AddComponent<Quad>(entity_id, quad);
     component_manager.AddComponent<Texture>(entity_id, texture);
     component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
+
+    entity_id++;
+    
+    // Floor Entity
+    transform.position[0] = 0;
+    transform.position[1] = 0;
+    transform.position[2] = 0;
+    transform.rotation[0] = 90;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 0;
+    transform.scale[1] = 0;
+    transform.scale[2] = 0;
+    
+    quad.extent[0] = 32;
+    quad.extent[1] = 2;
+    
+    texture.texture_index = 3;
+    texture.position[0] = 0;
+    texture.position[1] = 0;
+    texture.size[0] = 128 * 50;
+    texture.size[1] = 128 * 5;
+    texture.color[0] = 0;
+    texture.color[1] = 1;
+    texture.color[2] = 0;
+
+    entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
+                                                    PHYSICS_SYSTEM_SIGNATURE);
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<Quad>(entity_id, quad);
+    component_manager.AddComponent<Texture>(entity_id, texture);
+
+    entity_id++;
+    
+    // Ceiling Entity
+    transform.position[0] = 0;
+    transform.position[1] = 2.5;
+    transform.position[2] = 0;
+    transform.rotation[0] = 90;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 0;
+    transform.scale[1] = 0;
+    transform.scale[2] = 0;
+    
+    quad.extent[0] = 32;
+    quad.extent[1] = 2;
+    
+    texture.texture_index = 4;
+    texture.position[0] = 0;
+    texture.position[1] = 0;
+    texture.size[0] = 128 * 50;
+    texture.size[1] = 128 * 5;
+    texture.color[0] = 0;
+    texture.color[1] = 1;
+    texture.color[2] = 0;
+
+    entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
+                                                    PHYSICS_SYSTEM_SIGNATURE);
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<Quad>(entity_id, quad);
+    component_manager.AddComponent<Texture>(entity_id, texture);
+
+    entity_id++;
+    
+    // Floor Entity
+    transform.position[0] = 0;
+    transform.position[1] = 0;
+    transform.position[2] = 0;
+    transform.rotation[0] = 90;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 0;
+    transform.scale[1] = 0;
+    transform.scale[2] = 0;
+    
+    quad.extent[0] = 32;
+    quad.extent[1] = 2;
+    
+    texture.texture_index = 3;
+    texture.position[0] = 0;
+    texture.position[1] = 0;
+    texture.size[0] = 128 * 2;
+    texture.size[1] = 128 * 32;
+    texture.color[0] = 0;
+    texture.color[1] = 1;
+    texture.color[2] = 0;
+
+    entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
+                                                    PHYSICS_SYSTEM_SIGNATURE);
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<Quad>(entity_id, quad);
+    component_manager.AddComponent<Texture>(entity_id, texture);
 
     entity_id++;
 

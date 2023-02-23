@@ -13,7 +13,8 @@
 
 static const char* quad_vertex_shader_text =
 "#version 330\n"
-"uniform mat4 MVP;\n"
+"uniform mat4 MV;\n"
+"uniform mat4 P;\n"
 "layout(location = 0)in vec3 vPos;\n"
 "layout(location = 1)in vec3 vColor;\n"
 "layout(location = 2)in vec2 vTexCoord;\n"
@@ -21,7 +22,7 @@ static const char* quad_vertex_shader_text =
 "out vec2 fTexCoord;\n"
 "void main()\n"
 "{\n"
-"    gl_Position = MVP * vec4(vPos, 1.0);\n"
+"    gl_Position = P * MV * vec4(vPos, 1.0);\n"
 "    fColor = vColor;\n"
 "    fTexCoord = vTexCoord;\n"
 "}\n";
@@ -35,6 +36,46 @@ static const char* quad_fragment_shader_text =
 "void main()\n"
 "{\n"
 "    fragColor = texture(quadTexture, fTexCoord);\n"
+"}\n";
+
+static const char* xray_vertex_shader_text =
+"#version 330\n"
+"uniform mat4 MV;\n"
+"uniform mat4 P;\n"
+"layout(location = 0)in vec3 vPos;\n"
+"layout(location = 1)in vec3 vColor;\n"
+"layout(location = 2)in vec2 vTexCoord;\n"
+"out vec3 fColor;\n"
+"out vec2 fTexCoord;\n"
+"out vec4 fFragPos;\n"
+"void main()\n"
+"{\n"
+"    gl_Position = P * MV * vec4(vPos, 1.0);\n"
+"    fColor = vColor;\n"
+"    fTexCoord = vTexCoord;\n"
+"    fFragPos = MV * vec4(vPos, 1.0);\n"
+"}\n";
+ 
+static const char* xray_fragment_shader_text =
+"#version 330\n"
+"uniform sampler2D quadTexture;\n"
+"in vec3 fColor\n;"
+"in vec2 fTexCoord\n;"
+"in vec4 fFragPos;\n"
+"out vec4 fragColor;\n"
+"void main()\n"
+"{\n"
+"    float vision_angle = radians(15.0);\n"
+"    float camera_distance = sqrt(pow(fFragPos.x, 2) + pow(fFragPos.y, 2) + pow(fFragPos.z, 2));\n"
+"    float radius = tan(vision_angle) * camera_distance;\n"
+"    vec3 look_center = vec3(0.0, 0.0, -camera_distance);\n"
+"    float look_center_distance = sqrt(pow(look_center.x - fFragPos.x, 2) + pow(look_center.y - fFragPos.y, 2) + pow(look_center.z - fFragPos.z, 2));\n"
+"    float opacity = 1.0;\n"
+"    if(look_center_distance < radius)\n"
+"    {\n"
+"         opacity = 0.0;\n"
+"    }\n"
+"    fragColor = vec4(1.0, 1.0, 1.0, opacity) * texture(quadTexture, fTexCoord);\n"
 "}\n";
 
 struct VertexData
@@ -123,7 +164,8 @@ RenderSystem::RenderSystem(MessageBus& message_bus) :
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_texture_sizes[texture_index][0], m_texture_sizes[texture_index][1], 0, GL_RGB, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(data);
-
+    
+    // Normal Shader
     GLuint quad_render_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(quad_render_vertex_shader, 1, &quad_vertex_shader_text, NULL);
     glCompileShader(quad_render_vertex_shader);
@@ -192,9 +234,81 @@ RenderSystem::RenderSystem(MessageBus& message_bus) :
 
     glDeleteShader(quad_render_vertex_shader);
     glDeleteShader(quad_render_fragment_shader);
+
+    GLuint xray_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(xray_vertex_shader, 1, &xray_vertex_shader_text, NULL);
+    glCompileShader(xray_vertex_shader);
+
+    isCompiled = 0;
+    glGetShaderiv(xray_vertex_shader, GL_COMPILE_STATUS, &isCompiled);
+    if(isCompiled == GL_FALSE)
+    {
+        GLint maxLength = 0;
+        glGetShaderiv(xray_vertex_shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        std::vector<GLchar> errorLog(maxLength);
+        glGetShaderInfoLog(xray_vertex_shader, maxLength, &maxLength, &errorLog[0]);
+        printf("%s\n", errorLog.data());
+
+        // Provide the infolog in whatever manor you deem best.
+        // Exit with failure.
+        glDeleteShader(xray_vertex_shader); // Don't leak the shader.
+        return;
+    }
+ 
+    GLuint xray_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(xray_fragment_shader, 1, &xray_fragment_shader_text, NULL);
+    glCompileShader(xray_fragment_shader);
+
+    isCompiled = 0;
+    glGetShaderiv(xray_fragment_shader, GL_COMPILE_STATUS, &isCompiled);
+    if(isCompiled == GL_FALSE)
+    {
+        GLint maxLength = 0;
+        glGetShaderiv(xray_fragment_shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        std::vector<GLchar> errorLog(maxLength);
+        glGetShaderInfoLog(xray_fragment_shader, maxLength, &maxLength, &errorLog[0]);
+        printf("%s\n", errorLog.data());
+
+        // Provide the infolog in whatever manor you deem best.
+        // Exit with failure.
+        glDeleteShader(xray_fragment_shader); // Don't leak the shader.
+        return;
+    }
+ 
+    m_xray_program = glCreateProgram();
+    glAttachShader(m_xray_program, xray_vertex_shader);
+    glAttachShader(m_xray_program, xray_fragment_shader);
+    glLinkProgram(m_xray_program);
     
-    // m_texure_sampler_location = glGetUniformLocation(m_shader_program, "quadTexture");
-    m_mvp_location = glGetUniformLocation(m_shader_program, "MVP");
+    status; 
+    glGetProgramiv( m_xray_program, GL_LINK_STATUS, &status ); 
+    if( GL_FALSE == status ) {
+        GLint maxLength = 0;
+        glGetProgramiv(m_xray_program, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        std::vector<GLchar> errorLog(maxLength);
+        glGetProgramInfoLog(m_xray_program, maxLength, &maxLength, &errorLog[0]);
+        printf("%s\n", errorLog.data());
+
+        // Provide the infolog in whatever manor you deem best.
+        // Exit with failure.
+        glDeleteProgram(m_xray_program); // Don't leak the shader.
+        return;
+    }
+
+    glDeleteShader(xray_vertex_shader);
+    glDeleteShader(xray_fragment_shader);
+    
+    m_mv_location = glGetUniformLocation(m_shader_program, "MV");
+    m_p_location = glGetUniformLocation(m_shader_program, "P");
+    
+    m_xray_mv_location = glGetUniformLocation(m_xray_program, "MV");
+    m_xray_p_location = glGetUniformLocation(m_xray_program, "P");
 }
 
 RenderSystem::~RenderSystem()
@@ -258,15 +372,26 @@ void RenderSystem::HandleEntity(uint32_t entity_id, float delta_time)
     
     // Perspective Matrix
     mat4x4 perspective_matrix;
-    mat4x4_perspective(perspective_matrix, 65 * M_PI / 180.0, 4 / 3, 1, 300);
+    mat4x4_perspective(perspective_matrix, 65 * M_PI / 180.0, 4 / 3, 0.1, 300);
 
     // Model View Perspective Matrix
     mat4x4 model_view_matrix;
     mat4x4_mul(model_view_matrix, view_matrix, model_matrix);
-    mat4x4_mul(model_view_matrix, perspective_matrix, model_view_matrix);
 
-    glUniformMatrix4fv(m_mvp_location, 1, GL_FALSE, (const GLfloat*) model_view_matrix);
     glBindTexture(GL_TEXTURE_2D, m_textures[texture.texture_index]);
+
+    if(m_entity_manager->GetEntitySignature(entity_id) & XRAY_SYSTEM_SIGNATURE)
+    {
+        glUseProgram(m_xray_program);
+        glUniformMatrix4fv(m_xray_mv_location, 1, GL_FALSE, (const GLfloat*) model_view_matrix);
+        glUniformMatrix4fv(m_xray_p_location, 1, GL_FALSE, (const GLfloat*) perspective_matrix);
+    }
+    else
+    {
+        glUseProgram(m_shader_program);
+        glUniformMatrix4fv(m_mv_location, 1, GL_FALSE, (const GLfloat*) model_view_matrix);
+        glUniformMatrix4fv(m_p_location, 1, GL_FALSE, (const GLfloat*) perspective_matrix);
+    }
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_DYNAMIC_DRAW);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -297,8 +422,6 @@ void RenderSystem::Update(float delta_time)
     m_look[0] = m_eye[0] + result[0];
     m_look[1] = m_eye[1] + result[1];
     m_look[2] = m_eye[2] + result[2];
-    
-    glUseProgram(m_shader_program);
  
     int32_t vpos_location = glGetAttribLocation(m_shader_program, "vPos");
     int32_t vcolor_location = glGetAttribLocation(m_shader_program, "vColor");
@@ -313,8 +436,6 @@ void RenderSystem::Update(float delta_time)
     glEnableVertexAttribArray(vtexcoord_location);
     glVertexAttribPointer(vtexcoord_location, 2, GL_FLOAT, GL_FALSE,
                           sizeof(VertexData), (void*) (sizeof(float) * 6));
-    
-    // glBindTexture(GL_TEXTURE_2D, m_textures[0]);
 
     uint32_t num_entities = m_entity_manager->GetNumEntities();
     
