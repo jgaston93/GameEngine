@@ -46,6 +46,12 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     input_map->SetIsPressed(key, is_pressed);
 }
 
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    input_map->SetMousePosX(xpos);
+    input_map->SetMousePosY(ypos);
+}
+
 void GenerateEntities(EntityManager& entity_manager, ComponentManager& component_manager);
 // void LoadModels();
 
@@ -73,10 +79,15 @@ int main(int argv, char* args[])
     }
  
     glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
  
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
     glfwSwapInterval(1);
+
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    if (glfwRawMouseMotionSupported())
+    glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
@@ -102,7 +113,7 @@ int main(int argv, char* args[])
         input_map->AddInput(input_list[i]);
     }
     
-    const uint32_t num_entities = 4;
+    const uint32_t num_entities = 6;
     EntityManager entity_manager(num_entities);
     ComponentManager component_manager(num_entities);
     GenerateEntities(entity_manager, component_manager);
@@ -121,9 +132,9 @@ int main(int argv, char* args[])
     RenderSystem render_system(message_bus);
     render_system.SetEntityManager(&entity_manager);
     render_system.SetComponentManager(&component_manager);
-    UISystem ui_system(message_bus, window);
-    ui_system.SetEntityManager(&entity_manager);
-    ui_system.SetComponentManager(&component_manager);
+    // UISystem ui_system(message_bus, window);
+    // ui_system.SetEntityManager(&entity_manager);
+    // ui_system.SetComponentManager(&component_manager);
     
     std::chrono::time_point<std::chrono::steady_clock> prev_time = std::chrono::steady_clock::now();
     uint32_t num_frames = 0;
@@ -153,7 +164,7 @@ int main(int argv, char* args[])
         player_input_system.Update(delta_time);
         physics_system.Update(delta_time);
         render_system.Update(delta_time);
-        ui_system.Update(delta_time);
+        // ui_system.Update(delta_time);
 
         glfwSwapBuffers(window);
         
@@ -178,7 +189,74 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     // Camera Entity
     Transform transform;
     transform.position[0] = 0;
-    transform.position[1] = 0;
+    transform.position[1] = 1;
+    transform.position[2] = 0;
+    transform.rotation[0] = 0;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 0;
+    transform.scale[1] = 0;
+    transform.scale[2] = 0;
+
+    BoundingBox bounding_box;
+    bounding_box.extent[0] = 2;
+    bounding_box.extent[1] = 2;
+    bounding_box.extent[2] = 2;
+
+    entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
+    entity_manager.SetEntitySignature(entity_id, PLAYER_INPUT_SYSTEM_SIGNATURE |
+                                                    PHYSICS_SYSTEM_SIGNATURE |
+                                                    COLLISION_SYSTEM_SIGNATURE);
+    entity_manager.SetEntityTag(entity_id, "camera");
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+
+    entity_id++;
+    
+    // Wall Entity
+    transform.position[0] = 0;
+    transform.position[1] = 1.25;
+    transform.position[2] = -10;
+    transform.rotation[0] = 0;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 0;
+    transform.scale[1] = 0;
+    transform.scale[2] = 0;
+    
+    Quad quad;
+    quad.extent[0] = 32;
+    quad.extent[1] = 2.5;
+
+    Texture texture;
+    texture.texture_index = 2;
+    texture.position[0] = 0;
+    texture.position[1] = 0;
+    texture.size[0] = 256;
+    texture.size[1] = 256;
+    texture.color[0] = 0;
+    texture.color[1] = 1;
+    texture.color[2] = 0;
+    
+    bounding_box.extent[0] = 32;
+    bounding_box.extent[1] = 2.5;
+    bounding_box.extent[2] = 2;
+
+    entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
+                                                    PHYSICS_SYSTEM_SIGNATURE | 
+                                                    COLLISION_SYSTEM_SIGNATURE);
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<Quad>(entity_id, quad);
+    component_manager.AddComponent<Texture>(entity_id, texture);
+    component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
+
+    entity_id++;
+    
+    // Wall Entity
+    transform.position[0] = 0;
+    transform.position[1] = 1.25;
     transform.position[2] = 10;
     transform.rotation[0] = 0;
     transform.rotation[1] = 0;
@@ -186,82 +264,100 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     transform.scale[0] = 0;
     transform.scale[1] = 0;
     transform.scale[2] = 0;
-
-    entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-    entity_manager.SetEntityTag(entity_id, "camera");
-
-    component_manager.AddComponent<Transform>(entity_id, transform);
-
-    entity_id++;
     
-    // Player Test Entity
-    transform.position[0] = -10;
-    transform.position[1] = 0;
-    transform.position[2] = -10;
-    transform.rotation[0] = 0;
-    transform.rotation[1] = 0;
-    transform.rotation[2] = 0;
-    transform.scale[0] = 0;
-    transform.scale[1] = 0;
-    transform.scale[2] = 0;
-
-    Quad quad;
-    quad.extent[0] = 1;
-    quad.extent[1] = 1;
-
-    Texture texture;
+    quad.extent[0] = 32;
+    quad.extent[1] = 2.5;
+    
+    texture.texture_index = 2;
+    texture.position[0] = 0;
+    texture.position[1] = 0;
+    texture.size[0] = 256;
+    texture.size[1] = 256;
     texture.color[0] = 0;
     texture.color[1] = 1;
     texture.color[2] = 0;
-
-    BoundingBox bounding_box;
-    bounding_box.extent[0] = 1;
-    bounding_box.extent[1] = 1;
-    bounding_box.extent[2] = 1;
-
-    RigidBody rigid_body;
-    rigid_body.velocity[0] = 0;
-    rigid_body.velocity[1] = 0;
-    rigid_body.velocity[2] = 0;
-    rigid_body.acceleration[0] = 0;
-    rigid_body.acceleration[1] = 0;
-    rigid_body.acceleration[2] = 0;
+    
+    bounding_box.extent[0] = 32;
+    bounding_box.extent[1] = 2.5;
+    bounding_box.extent[2] = 2;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
                                                     PHYSICS_SYSTEM_SIGNATURE | 
-                                                    COLLISION_SYSTEM_SIGNATURE |
-                                                    PLAYER_INPUT_SYSTEM_SIGNATURE);
+                                                    COLLISION_SYSTEM_SIGNATURE);
 
     component_manager.AddComponent<Transform>(entity_id, transform);
     component_manager.AddComponent<Quad>(entity_id, quad);
     component_manager.AddComponent<Texture>(entity_id, texture);
     component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
-    component_manager.AddComponent<RigidBody>(entity_id, rigid_body);
 
     entity_id++;
     
-    // Test Entity
-    transform.position[0] = 0;
-    transform.position[1] = 0;
-    transform.position[2] = -10;
+    // Wall Entity
+    transform.position[0] = 16;
+    transform.position[1] = 1.25;
+    transform.position[2] = 0;
     transform.rotation[0] = 0;
-    transform.rotation[1] = 0;
+    transform.rotation[1] = 90;
     transform.rotation[2] = 0;
     transform.scale[0] = 0;
     transform.scale[1] = 0;
     transform.scale[2] = 0;
     
-    quad.extent[0] = 5;
-    quad.extent[1] = 5;
+    quad.extent[0] = 20;
+    quad.extent[1] = 2.5;
     
-    texture.color[0] = 1;
-    texture.color[1] = 0;
+    texture.texture_index = 2;
+    texture.position[0] = 0;
+    texture.position[1] = 0;
+    texture.size[0] = 256;
+    texture.size[1] = 256;
+    texture.color[0] = 0;
+    texture.color[1] = 1;
     texture.color[2] = 0;
     
-    bounding_box.extent[0] = 5;
-    bounding_box.extent[1] = 5;
-    bounding_box.extent[2] = 1;
+    bounding_box.extent[0] = 2;
+    bounding_box.extent[1] = 2.5;
+    bounding_box.extent[2] = 20;
+
+    entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
+                                                    PHYSICS_SYSTEM_SIGNATURE | 
+                                                    COLLISION_SYSTEM_SIGNATURE);
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<Quad>(entity_id, quad);
+    component_manager.AddComponent<Texture>(entity_id, texture);
+    component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
+
+    entity_id++;
+    
+    // Wall Entity
+    transform.position[0] = -16;
+    transform.position[1] = 1.25;
+    transform.position[2] = 0;
+    transform.rotation[0] = 0;
+    transform.rotation[1] = 90;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 0;
+    transform.scale[1] = 0;
+    transform.scale[2] = 0;
+    
+    quad.extent[0] = 20;
+    quad.extent[1] = 2.5;
+    
+    texture.texture_index = 2;
+    texture.position[0] = 0;
+    texture.position[1] = 0;
+    texture.size[0] = 256;
+    texture.size[1] = 256;
+    texture.color[0] = 0;
+    texture.color[1] = 1;
+    texture.color[2] = 0;
+    
+    bounding_box.extent[0] = 2;
+    bounding_box.extent[1] = 2.5;
+    bounding_box.extent[2] = 20;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 

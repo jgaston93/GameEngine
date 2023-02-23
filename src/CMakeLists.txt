@@ -16,5 +16,5 @@ target_include_directories(Untitled PUBLIC ${CMAKE_SOURCE_DIR}/inc
                                                 ${CMAKE_SOURCE_DIR}/inc/Utils
                                                 ${CMAKE_SOURCE_DIR}/inc/MessageBus)
 
-target_link_options(Untitled PUBLIC -mwindows -static-libgcc -static-libstdc++ -static)
+target_link_options(Untitled PUBLIC -static-libgcc -static-libstdc++ -static) # -mwindows 
 target_link_libraries(Untitled glfw OpenGL::GL)

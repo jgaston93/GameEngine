@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cstdio>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #include "UISystem.hpp"
@@ -198,11 +197,11 @@ void UISystem::HandleEntity(uint32_t entity_id, float delta_time)
 
 void UISystem::Update(float delta_time)
 {
+    // glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_ui_texture);
 
     glUseProgram(m_shader_program);
- 
-    uint32_t texture_location = glGetUniformLocation(m_shader_program, "uiTexture");
+
     uint32_t vpos_location = glGetAttribLocation(m_shader_program, "vPos");
     uint32_t vcolor_location = glGetAttribLocation(m_shader_program, "vColor");
     uint32_t vtex_coord_location = glGetAttribLocation(m_shader_program, "vTexCoord");

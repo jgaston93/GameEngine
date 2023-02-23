@@ -36,18 +36,24 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
     {
         float intended_x_position = transform.position[0] + rigid_body.velocity[0] * delta_time;
         float intended_y_position = transform.position[1] + rigid_body.velocity[1] * delta_time;
+        float intended_z_position = transform.position[2] + rigid_body.velocity[2] * delta_time;
 
         BoundingBox& bounding_box = m_component_manager->GetComponent<BoundingBox>(entity_id);
         float half_width = bounding_box.extent[0] / 2;
         float half_height = bounding_box.extent[1] / 2;
+        float half_depth = bounding_box.extent[2] / 2;
         float min_x = transform.position[0] - half_width;
         float max_x = transform.position[0] + half_width;
         float min_y = transform.position[1] - half_height;
         float max_y = transform.position[1] + half_height;
+        float min_z = transform.position[2] - half_depth;
+        float max_z = transform.position[2] + half_depth;
         float intended_min_x = intended_x_position - half_width;
         float intended_max_x = intended_x_position + half_width;
         float intended_min_y = intended_y_position - half_height;
         float intended_max_y = intended_y_position + half_height;
+        float intended_min_z = intended_z_position - half_depth;
+        float intended_max_z = intended_z_position + half_depth;
 
         uint32_t num_entities = m_entity_manager->GetNumEntities();
         for(uint32_t other_entity_id = 0; other_entity_id < num_entities; other_entity_id++)
@@ -58,17 +64,22 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
                 Transform& other_transform = m_component_manager->GetComponent<Transform>(other_entity_id);
                 float other_half_width = other_bounding_box.extent[0] / 2;
                 float other_half_height = other_bounding_box.extent[1] / 2;
+                float other_half_depth = other_bounding_box.extent[2] / 2;
                 float other_min_x = other_transform.position[0] - other_half_width;
                 float other_max_x = other_transform.position[0] + other_half_width;
                 float other_min_y = other_transform.position[1] - other_half_height;
                 float other_max_y = other_transform.position[1] + other_half_height;
+                float other_min_z = other_transform.position[2] - other_half_depth;
+                float other_max_z = other_transform.position[2] + other_half_depth;
 
                 bool collision_x = max_x >= other_min_x && other_max_x >= min_x;
                 bool collision_y = max_y >= other_min_y && other_max_y >= min_y;
+                bool collision_z = max_z >= other_min_z && other_max_z >= min_z;
                 bool intended_collision_x = intended_max_x >= other_min_x && other_max_x >= intended_min_x;
                 bool intended_collision_y = intended_max_y >= other_min_y && other_max_y >= intended_min_y;
+                bool intended_collision_z = intended_max_z >= other_min_z && other_max_z >= intended_min_z;
 
-                if(intended_collision_x && collision_y)
+                if(intended_collision_x && collision_y && collision_z)
                 {
                     float dx = 0;
                     if(min_x < other_min_x)
@@ -85,7 +96,7 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
                         delta_time_x = x_time;
                     }
                 }
-                if(collision_x && intended_collision_y)
+                if(collision_x && intended_collision_y && collision_z)
                 {
                     float dy = 0;
                     if(min_y < other_min_y)
@@ -100,6 +111,23 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
                     if(y_time < delta_time_y)
                     {
                         delta_time_y = y_time;
+                    }
+                }
+                if(collision_x && collision_y && intended_collision_z)
+                {
+                    float dz = 0;
+                    if(min_z < other_min_z)
+                    {
+                        dz = other_min_z - max_z;
+                    }
+                    else if(min_z > other_min_z)
+                    {
+                        dz = min_z - other_max_z;
+                    }
+                    float z_time = abs(dz / rigid_body.velocity[2]);
+                    if(z_time < delta_time_z)
+                    {
+                        delta_time_z = z_time;
                     }
                 }
             }

@@ -48,3 +48,23 @@ bool InputMap::IsPressed(uint32_t input)
 
     return is_pressed;
 }
+
+void InputMap::SetMousePosX(double pos_x)
+{
+    m_mouse_pos_x = pos_x;
+}
+
+void InputMap::SetMousePosY(double pos_y)
+{
+    m_mouse_pos_y = pos_y;
+}
+
+double InputMap::GetMousePosX()
+{
+    return m_mouse_pos_x;
+}
+
+double InputMap::GetMousePosY()
+{
+    return m_mouse_pos_y;
+}

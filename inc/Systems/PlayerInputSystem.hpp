@@ -16,6 +16,8 @@ class PlayerInputSystem : public System
 
     private:
     InputMap& m_input_map;
+    double m_prev_mouse_pos_x;
+    double m_prev_mouse_pos_y;
 };
 
 #endif // PLAYER_INPUT_SYSTEM_HPP

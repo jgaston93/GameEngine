@@ -6,16 +6,6 @@
 #include "linmath.h"
 #include "Signatures.hpp"
 
-struct VertexData
-{
-    float x;
-    float y;
-    float z;
-    float r;
-    float g;
-    float b;
-};
-
 class RenderSystem : public System
 {
     public:
@@ -27,8 +17,13 @@ class RenderSystem : public System
     void Update(float delta_time);
 
     private:
-    uint32_t m_shader_program;
-    uint32_t m_mvp_location;
+    int32_t m_shader_program;
+    int32_t m_mvp_location;
+    uint32_t m_texure_sampler_location;
+
+    uint32_t m_texture_slots[5];
+    uint32_t m_textures[5];
+    int32_t m_texture_sizes[5][2];
     
     vec3 m_eye = { 0, 0, 0 };
     vec3 m_look = { 0, 0, -1 };
