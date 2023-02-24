@@ -8,6 +8,7 @@ enum MessageType
     QUIT,
     KEYPRESS,
     KEYRELEASE,
+    COLLISION
 };
 
 struct Message

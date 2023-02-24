@@ -78,6 +78,7 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
                 bool intended_collision_x = intended_max_x >= other_min_x && other_max_x >= intended_min_x;
                 bool intended_collision_y = intended_max_y >= other_min_y && other_max_y >= intended_min_y;
                 bool intended_collision_z = intended_max_z >= other_min_z && other_max_z >= intended_min_z;
+                bool collision_detected = false;
 
                 if(intended_collision_x && collision_y && collision_z)
                 {
@@ -94,6 +95,7 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
                     if(x_time < delta_time_x)
                     {
                         delta_time_x = x_time;
+                        collision_detected = true;
                     }
                 }
                 if(collision_x && intended_collision_y && collision_z)
@@ -111,6 +113,7 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
                     if(y_time < delta_time_y)
                     {
                         delta_time_y = y_time;
+                        collision_detected = true;
                     }
                 }
                 if(collision_x && collision_y && intended_collision_z)
@@ -128,6 +131,19 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
                     if(z_time < delta_time_z)
                     {
                         delta_time_z = z_time;
+                        collision_detected = true;
+                    }
+                }
+                if(collision_detected)
+                {
+                    char* entity_1_tag = m_entity_manager->GetEntityTag(entity_id);
+                    char* entity_2_tag = m_entity_manager->GetEntityTag(other_entity_id);
+                    if(strcmp(entity_1_tag, "enemy") == 0 && strcmp(entity_2_tag, "side_wall"))
+                    {
+                        Message message;
+                        message.message_type = MessageType::COLLISION;
+                        message.message_data = (entity_id << 16) + other_entity_id;
+                        m_message_bus.PostMessage(message);
                     }
                 }
             }

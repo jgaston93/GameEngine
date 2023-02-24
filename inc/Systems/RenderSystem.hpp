@@ -27,9 +27,9 @@ class RenderSystem : public System
     int32_t m_xray_p_location;
     uint32_t m_texure_sampler_location;
 
-    uint32_t m_texture_slots[6];
-    uint32_t m_textures[6];
-    int32_t m_texture_sizes[6][2];
+    uint32_t m_texture_slots[7];
+    uint32_t m_textures[7];
+    int32_t m_texture_sizes[7][2];
     
     vec3 m_eye = { 0, 0, 0 };
     vec3 m_look = { 0, 0, -1 };

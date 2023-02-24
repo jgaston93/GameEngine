@@ -8,7 +8,8 @@ add_executable(Untitled main.cpp
                              PlayerInputSystem.cpp
                              PhysicsSystem.cpp
                              RenderSystem.cpp
-                             UISystem.cpp)
+                             UISystem.cpp
+                             AISystem.cpp)
 
 target_include_directories(Untitled PUBLIC ${CMAKE_SOURCE_DIR}/inc
                                                 ${CMAKE_SOURCE_DIR}/inc/Components

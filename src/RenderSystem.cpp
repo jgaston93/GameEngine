@@ -35,7 +35,9 @@ static const char* quad_fragment_shader_text =
 "uniform sampler2D quadTexture;\n"
 "void main()\n"
 "{\n"
-"    fragColor = texture(quadTexture, fTexCoord);\n"
+"    float ambientStrength = 0.25;\n"
+"    vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);\n"
+"    fragColor = vec4(ambient, 1.0) * texture(quadTexture, fTexCoord);\n"
 "    if(fragColor.w == 0) discard;\n"
 "}\n";
 
@@ -74,7 +76,9 @@ static const char* xray_fragment_shader_text =
 "    float look_center_distance = sqrt(pow(look_center.x - fFragPos.x, 2) + pow(look_center.y - fFragPos.y, 2) + pow(look_center.z - fFragPos.z, 2));\n"
 "    float opacity = 1.0;\n"
 "    if(look_center_distance < radius) discard;\n"
-"    fragColor = texture(quadTexture, fTexCoord);\n"
+"    float ambientStrength = 0.25;\n"
+"    vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);\n"
+"    fragColor = vec4(ambient, 1.0) * texture(quadTexture, fTexCoord);\n"
 "    if(fragColor.w == 0) discard;\n"
 "}\n";
 
@@ -177,6 +181,20 @@ RenderSystem::RenderSystem(MessageBus& message_bus, InputMap& input_map) :
 
     data = stbi_load("assets/GroundTextureAtlas.png", &m_texture_sizes[texture_index][0], &m_texture_sizes[texture_index][1], &num_channels, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_texture_sizes[texture_index][0], m_texture_sizes[texture_index][1], 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    stbi_image_free(data);
+    
+    texture_index++;
+    glGenTextures(1, &m_textures[texture_index]);
+    glBindTexture(GL_TEXTURE_2D, m_textures[texture_index]);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    data = stbi_load("assets/EnemyTexture.png", &m_texture_sizes[texture_index][0], &m_texture_sizes[texture_index][1], &num_channels, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_texture_sizes[texture_index][0], m_texture_sizes[texture_index][1], 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(data);
     
