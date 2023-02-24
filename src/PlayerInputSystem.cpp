@@ -26,7 +26,7 @@ void PlayerInputSystem::HandleEntity(uint32_t entity_id, float delta_time)
     RigidBody& rigid_body = m_component_manager->GetComponent<RigidBody>(entity_id);
     Transform& transform = m_component_manager->GetComponent<Transform>(entity_id);
 
-    float player_velocity = 10;
+    float player_velocity = 4;
     float player_rotation_velocity = 2000;
 
     rigid_body.velocity[0] = 0;

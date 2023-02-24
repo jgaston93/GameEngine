@@ -36,6 +36,7 @@ static const char* quad_fragment_shader_text =
 "void main()\n"
 "{\n"
 "    fragColor = texture(quadTexture, fTexCoord);\n"
+"    if(fragColor.w == 0) discard;\n"
 "}\n";
 
 static const char* xray_vertex_shader_text =
@@ -68,14 +69,13 @@ static const char* xray_fragment_shader_text =
 "    float vision_angle = radians(15.0);\n"
 "    float camera_distance = sqrt(pow(fFragPos.x, 2) + pow(fFragPos.y, 2) + pow(fFragPos.z, 2));\n"
 "    float radius = tan(vision_angle) * camera_distance;\n"
+"    if(radius > .5) radius = .5;\n"
 "    vec3 look_center = vec3(0.0, 0.0, -camera_distance);\n"
 "    float look_center_distance = sqrt(pow(look_center.x - fFragPos.x, 2) + pow(look_center.y - fFragPos.y, 2) + pow(look_center.z - fFragPos.z, 2));\n"
 "    float opacity = 1.0;\n"
-"    if(look_center_distance < radius)\n"
-"    {\n"
-"         opacity = 0.0;\n"
-"    }\n"
-"    fragColor = vec4(1.0, 1.0, 1.0, opacity) * texture(quadTexture, fTexCoord);\n"
+"    if(look_center_distance < radius) discard;\n"
+"    fragColor = texture(quadTexture, fTexCoord);\n"
+"    if(fragColor.w == 0) discard;\n"
 "}\n";
 
 struct VertexData
@@ -90,8 +90,9 @@ struct VertexData
     float v;
 };
 
-RenderSystem::RenderSystem(MessageBus& message_bus) : 
-    System(message_bus, RENDER_SYSTEM_SIGNATURE)
+RenderSystem::RenderSystem(MessageBus& message_bus, InputMap& input_map) : 
+    System(message_bus, RENDER_SYSTEM_SIGNATURE),
+    m_input_map(input_map)
 {
     uint32_t texture_index = 0;
     glGenTextures(1, &m_textures[texture_index]);
@@ -161,6 +162,20 @@ RenderSystem::RenderSystem(MessageBus& message_bus) :
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     data = stbi_load("assets/CeilingTexture.png", &m_texture_sizes[texture_index][0], &m_texture_sizes[texture_index][1], &num_channels, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_texture_sizes[texture_index][0], m_texture_sizes[texture_index][1], 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    stbi_image_free(data);
+    
+    texture_index++;
+    glGenTextures(1, &m_textures[texture_index]);
+    glBindTexture(GL_TEXTURE_2D, m_textures[texture_index]);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    data = stbi_load("assets/GroundTextureAtlas.png", &m_texture_sizes[texture_index][0], &m_texture_sizes[texture_index][1], &num_channels, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_texture_sizes[texture_index][0], m_texture_sizes[texture_index][1], 0, GL_RGB, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(data);
@@ -333,7 +348,7 @@ void RenderSystem::HandleEntity(uint32_t entity_id, float delta_time)
     float u1 = texture.position[0] / m_texture_sizes[texture.texture_index][0];
     float v1 = texture.position[1] / m_texture_sizes[texture.texture_index][1];
     float u2 = (texture.position[0] + texture.size[0]) / m_texture_sizes[texture.texture_index][0];
-    float v2 = (texture.position[0] + texture.size[1]) / m_texture_sizes[texture.texture_index][1];
+    float v2 = (texture.position[1] + texture.size[1]) / m_texture_sizes[texture.texture_index][1];
 
     VertexData vertices[4];
     vertices[0] = { -half_width,      half_height,      0, 
@@ -372,7 +387,14 @@ void RenderSystem::HandleEntity(uint32_t entity_id, float delta_time)
     
     // Perspective Matrix
     mat4x4 perspective_matrix;
-    mat4x4_perspective(perspective_matrix, 65 * M_PI / 180.0, 4 / 3, 0.1, 300);
+    if(m_input_map.IsPressed(GLFW_KEY_E))
+    {
+        mat4x4_perspective(perspective_matrix, 30 * M_PI / 180.0, 4 / 3, 0.1, 300);
+    }
+    else
+    {
+        mat4x4_perspective(perspective_matrix, 60 * M_PI / 180.0, 4 / 3, 0.1, 300);
+    }
 
     // Model View Perspective Matrix
     mat4x4 model_view_matrix;
@@ -380,7 +402,7 @@ void RenderSystem::HandleEntity(uint32_t entity_id, float delta_time)
 
     glBindTexture(GL_TEXTURE_2D, m_textures[texture.texture_index]);
 
-    if(m_entity_manager->GetEntitySignature(entity_id) & XRAY_SYSTEM_SIGNATURE)
+    if(m_entity_manager->GetEntitySignature(entity_id) & XRAY_SYSTEM_SIGNATURE && m_input_map.IsPressed(GLFW_KEY_E))
     {
         glUseProgram(m_xray_program);
         glUniformMatrix4fv(m_xray_mv_location, 1, GL_FALSE, (const GLfloat*) model_view_matrix);
