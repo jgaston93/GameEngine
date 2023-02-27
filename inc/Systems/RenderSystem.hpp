@@ -19,11 +19,16 @@ class RenderSystem : public System
     private:
     InputMap m_input_map;
 
+    bool m_zoom_on;
+    bool m_xray_on;
+
     int32_t m_shader_program;
     int32_t m_xray_program;
-    int32_t m_mv_location;
+    int32_t m_m_location;
+    int32_t m_v_location;
     int32_t m_p_location;
-    int32_t m_xray_mv_location;
+    int32_t m_xray_m_location;
+    int32_t m_xray_v_location;
     int32_t m_xray_p_location;
     uint32_t m_texure_sampler_location;
 

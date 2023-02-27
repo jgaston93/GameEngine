@@ -6,6 +6,7 @@
 struct Quad
 {
     vec2 extent;
+    vec3 normal;
 };
 
 #endif // QUAD_MESH_HPP

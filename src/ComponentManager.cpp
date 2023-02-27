@@ -11,7 +11,8 @@ ComponentManager::ComponentManager(uint32_t num_entities) : m_transform_pool(num
                                                             m_label_texture_pool(num_entities),
                                                             m_timer_pool(num_entities),
                                                             m_bounds_pool(num_entities),
-                                                            m_label_pool(num_entities)
+                                                            m_label_pool(num_entities),
+                                                            m_ai_data_pool(num_entities)
 {
 
 }
@@ -151,4 +152,16 @@ template <>
 Label& ComponentManager::GetComponent<Label>(uint32_t entity_id)
 {
     return m_label_pool.GetComponent(entity_id);
+}
+
+template <>
+void ComponentManager::AddComponent<AIData>(uint32_t entity_id, AIData component)
+{
+    m_ai_data_pool.AddComponent(entity_id, component);
+}
+
+template <>
+AIData& ComponentManager::GetComponent<AIData>(uint32_t entity_id)
+{
+    return m_ai_data_pool.GetComponent(entity_id);
 }

@@ -18,6 +18,12 @@ class PlayerInputSystem : public System
     InputMap& m_input_map;
     double m_prev_mouse_pos_x;
     double m_prev_mouse_pos_y;
+    float m_shoot_timer;
+    uint32_t m_num_bullets;
+    uint32_t m_bullet_index;
+
+    bool m_zoom_on;
+    bool m_xray_on;
 };
 
 #endif // PLAYER_INPUT_SYSTEM_HPP

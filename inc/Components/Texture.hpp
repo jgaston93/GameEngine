@@ -7,6 +7,7 @@ struct Texture
     vec2 position;
     vec2 size;
     vec3 color;
+    bool use_light;
 };
 
 #endif // TEXTURE_HPP

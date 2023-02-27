@@ -47,6 +47,20 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     input_map->SetIsPressed(key, is_pressed);
 }
 
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    bool is_pressed = input_map->IsPressed(button);
+    if(action == GLFW_PRESS)
+    {
+        is_pressed = true;
+    }
+    else if(action == GLFW_RELEASE)
+    {
+        is_pressed = false;
+    }
+    input_map->SetIsPressed(button, is_pressed);
+}
+
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
     input_map->SetMousePosX(xpos);
@@ -81,7 +95,9 @@ int main(int argv, char* args[])
     }
  
     glfwSetKeyCallback(window, key_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetCursorPos(window, 0, 0);
  
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
@@ -90,15 +106,15 @@ int main(int argv, char* args[])
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     if (glfwRawMouseMotionSupported())
     glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-    
+
+    glEnable(GL_CULL_FACE);
     glEnable(GL_BLEND);
-    glEnable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     glGenBuffers(1, &vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 
-    uint32_t num_inputs = 9;
+    uint32_t num_inputs = 13;
     uint32_t input_list[] = { GLFW_KEY_LEFT,
                                 GLFW_KEY_RIGHT,
                                 GLFW_KEY_UP,
@@ -109,7 +125,9 @@ int main(int argv, char* args[])
                                 GLFW_KEY_D,
                                 GLFW_KEY_E,
                                 GLFW_KEY_Q,
-                                GLFW_KEY_SPACE };
+                                GLFW_KEY_SPACE,
+                                GLFW_MOUSE_BUTTON_RIGHT,
+                                GLFW_MOUSE_BUTTON_LEFT };
 
     input_map = new InputMap(num_inputs);
     for(uint32_t i = 0; i < num_inputs; i++)
@@ -117,14 +135,14 @@ int main(int argv, char* args[])
         input_map->AddInput(input_list[i]);
     }
     
-    const uint32_t num_entities = 140;
+    const uint32_t num_entities = 174;
     EntityManager entity_manager(num_entities);
     ComponentManager component_manager(num_entities);
     GenerateEntities(entity_manager, component_manager);
 
 
     const uint32_t num_messages = 1024;
-    const uint32_t num_systems = 4;
+    const uint32_t num_systems = 5;
     MessageBus message_bus(num_messages, num_systems);
 
     PlayerInputSystem player_input_system(message_bus, *input_map);
@@ -136,9 +154,9 @@ int main(int argv, char* args[])
     RenderSystem render_system(message_bus, *input_map);
     render_system.SetEntityManager(&entity_manager);
     render_system.SetComponentManager(&component_manager);
-    // UISystem ui_system(message_bus, window);
-    // ui_system.SetEntityManager(&entity_manager);
-    // ui_system.SetComponentManager(&component_manager);
+    UISystem ui_system(message_bus, window);
+    ui_system.SetEntityManager(&entity_manager);
+    ui_system.SetComponentManager(&component_manager);
     AISystem ai_system(message_bus);
     ai_system.SetEntityManager(&entity_manager);
     ai_system.SetComponentManager(&component_manager);
@@ -172,8 +190,10 @@ int main(int argv, char* args[])
         ai_system.Update(delta_time);
         player_input_system.Update(delta_time);
         physics_system.Update(delta_time);
+        glEnable(GL_DEPTH_TEST);
         render_system.Update(delta_time);
-        // ui_system.Update(delta_time);
+        glDisable(GL_DEPTH_TEST);
+        ui_system.Update(delta_time);
 
         glfwSwapBuffers(window);
         
@@ -208,17 +228,18 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     transform.scale[2] = 0;
 
     BoundingBox bounding_box;
-    bounding_box.extent[0] = 2;
-    bounding_box.extent[1] = 2;
-    bounding_box.extent[2] = 2;
+    bounding_box.extent[0] = 0.25;
+    bounding_box.extent[1] = 1.5;
+    bounding_box.extent[2] = 0.25;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, PLAYER_INPUT_SYSTEM_SIGNATURE |
                                                     PHYSICS_SYSTEM_SIGNATURE |
                                                     COLLISION_SYSTEM_SIGNATURE);
-    entity_manager.SetEntityTag(entity_id, "camera");
+    entity_manager.SetEntityTag(entity_id, "player");
 
     component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
 
     entity_id++;
 
@@ -268,7 +289,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     transform.position[0] = 0;
     transform.position[1] = other_floor_offset[1] - 0.2;
     transform.position[2] = 0;
-    transform.rotation[0] = 90;
+    transform.rotation[0] = -90;
     transform.rotation[1] = 0;
     transform.rotation[2] = 0;
     transform.scale[0] = 0;
@@ -285,9 +306,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     texture.position[1] = 0;
     texture.size[0] = 256;
     texture.size[1] = 85;
-    texture.color[0] = 0;
-    texture.color[1] = 1;
-    texture.color[2] = 0;
+    texture.use_light = false;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE);
@@ -302,7 +321,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     transform.position[0] = 0;
     transform.position[1] = other_floor_offset[1] - 0.1;
     transform.position[2] = -6;
-    transform.rotation[0] = 90;
+    transform.rotation[0] = -90;
     transform.rotation[1] = 0;
     transform.rotation[2] = 0;
     transform.scale[0] = 0;
@@ -317,9 +336,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     texture.position[1] = 172;
     texture.size[0] = 256 * 1000;
     texture.size[1] = 85;
-    texture.color[0] = 0;
-    texture.color[1] = 1;
-    texture.color[2] = 0;
+    texture.use_light = false;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE);
@@ -334,7 +351,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     transform.position[0] = 0;
     transform.position[1] = other_floor_offset[1] - 0.1;
     transform.position[2] = -8.8;
-    transform.rotation[0] = 90;
+    transform.rotation[0] = -90;
     transform.rotation[1] = 0;
     transform.rotation[2] = 0;
     transform.scale[0] = 0;
@@ -349,9 +366,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     texture.position[1] = 85;
     texture.size[0] = 256 * 1000;
     texture.size[1] = 85;
-    texture.color[0] = 0;
-    texture.color[1] = 1;
-    texture.color[2] = 0;
+    texture.use_light = false;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE);
@@ -381,10 +396,91 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     snprintf(label.text, 10, "TEST");
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-    entity_manager.SetEntitySignature(entity_id, UI_SYSTEM_SIGNATURE);
+    entity_manager.SetEntitySignature(entity_id, UI_SYSTEM_TEXT_SIGNATURE);
 
     component_manager.AddComponent<Transform>(entity_id, transform);
     component_manager.AddComponent<Label>(entity_id, label);
+
+    entity_id++;
+
+    // Crosshair 
+    transform.position[0] = 640 / 2;
+    transform.position[1] = 480 / 2;
+    transform.position[2] = 0;
+    transform.rotation[0] = 0;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 1;
+    transform.scale[1] = 1;
+    transform.scale[2] = 1;
+
+    texture.position[0] = 0;
+    texture.position[1] = 0;
+    texture.size[0] = 256;
+    texture.size[1] = 256;
+
+    quad.extent[0] = 640 / 2;
+    quad.extent[1] = 480 / 2;
+
+    entity_manager.SetEntityState(entity_id, EntityState::INACTIVE);
+    entity_manager.SetEntitySignature(entity_id, UI_SYSTEM_IMAGE_SIGNATURE);
+    entity_manager.SetEntityTag(entity_id, "crosshair");
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<Texture>(entity_id, texture);
+    component_manager.AddComponent<Quad>(entity_id, quad);
+
+    entity_id++;
+
+    // Bullets
+    for(uint32_t i = 0; i < 32; i++)
+    {
+        transform.position[0] = 0;
+        transform.position[1] = 0;
+        transform.position[2] = 0;
+        transform.rotation[0] = 0;
+        transform.rotation[1] = 0;
+        transform.rotation[2] = 0;
+        transform.scale[0] = 0;
+        transform.scale[1] = 0;
+        transform.scale[2] = 0;
+        
+        texture.texture_index = 2;
+        texture.position[0] = 0;
+        texture.position[1] = 257;
+        texture.size[0] = 63;
+        texture.size[1] = 63;
+
+        quad.extent[0] = 0.1;
+        quad.extent[1] = 0.1;
+
+        bounding_box.extent[0] = 0.1;
+        bounding_box.extent[1] = 0.1;
+        bounding_box.extent[2] = 0.1;
+
+        RigidBody rigid_body;
+        rigid_body.velocity[0] = 0;
+        rigid_body.velocity[1] = 0;
+        rigid_body.velocity[2] = 0;
+        rigid_body.acceleration[0] = 0;
+        rigid_body.acceleration[1] = 0;
+        rigid_body.acceleration[2] = 0;
+
+        entity_manager.SetEntityState(entity_id, EntityState::INACTIVE);
+        entity_manager.SetEntitySignature(entity_id, PHYSICS_SYSTEM_SIGNATURE |
+                                                        COLLISION_SYSTEM_SIGNATURE);
+        char bullet_tag[10];
+        sprintf(bullet_tag, "bullet_%d", i);
+        entity_manager.SetEntityTag(entity_id, bullet_tag);
+
+        component_manager.AddComponent<Transform>(entity_id, transform);
+        component_manager.AddComponent<Texture>(entity_id, texture);
+        component_manager.AddComponent<Quad>(entity_id, quad);
+
+        entity_id++;
+    }
+
+    printf("Num Entities: %d\n", entity_id);
 }
 
 
@@ -439,6 +535,19 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
         quad.extent[0] = wall_width;
         quad.extent[1] = wall_height;
 
+        if(my_building)
+        {
+            quad.normal[0] = 0;
+            quad.normal[1] = 0;
+            quad.normal[2] = 1;
+        }
+        else
+        {
+            quad.normal[0] = 0;
+            quad.normal[1] = 0;
+            quad.normal[2] = -1;
+        }
+
         Texture texture;
         
         if(my_building)
@@ -448,9 +557,7 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             texture.position[1] = 0;
             texture.size[0] = 256;
             texture.size[1] = 256;
-            texture.color[0] = 0;
-            texture.color[1] = 1;
-            texture.color[2] = 0;
+            texture.use_light = true;
         }
         else
         {
@@ -459,13 +566,16 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             texture.position[1] = 0;
             texture.size[0] = 64 * wall_width;
             texture.size[1] = 64 * 2;
-            texture.color[0] = 0;
-            texture.color[1] = 1;
-            texture.color[2] = 0;
+            texture.use_light = false;
         }
 
+        BoundingBox bounding_box;
+        bounding_box.extent[0] = wall_width;
+        bounding_box.extent[1] = wall_height;
+        bounding_box.extent[2] = 0.1;
+
         entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-        uint32_t signature = RENDER_SYSTEM_SIGNATURE;
+        uint32_t signature = RENDER_SYSTEM_SIGNATURE | COLLISION_SYSTEM_SIGNATURE;
         if(!my_building)
         {
             signature |= XRAY_SYSTEM_SIGNATURE;
@@ -475,6 +585,7 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
         component_manager.AddComponent<Transform>(entity_id, transform);
         component_manager.AddComponent<Quad>(entity_id, quad);
         component_manager.AddComponent<Texture>(entity_id, texture);
+        component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
 
         entity_id++;
     }
@@ -498,6 +609,19 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
         quad.extent[0] = window_width;
         quad.extent[1] = wall_height / 3;
 
+        if(my_building)
+        {
+            quad.normal[0] = 0;
+            quad.normal[1] = 0;
+            quad.normal[2] = 1;
+        }
+        else
+        {
+            quad.normal[0] = 0;
+            quad.normal[1] = 0;
+            quad.normal[2] = -1;
+        }
+
         Texture texture;
         if(my_building)
         {
@@ -506,9 +630,7 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             texture.position[1] = 0;
             texture.size[0] = 256;
             texture.size[1] = 256 / 3;
-            texture.color[0] = 0;
-            texture.color[1] = 1;
-            texture.color[2] = 0;
+            texture.use_light = true;
         }
         else
         {
@@ -517,13 +639,17 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             texture.position[1] = 0;
             texture.size[0] = 64;
             texture.size[1] = 64;
-            texture.color[0] = 0;
-            texture.color[1] = 1;
-            texture.color[2] = 0;
+            texture.use_light = false;
         }
 
+        
+        BoundingBox bounding_box;
+        bounding_box.extent[0] = window_width;
+        bounding_box.extent[1] = wall_height / 3;
+        bounding_box.extent[2] = 0.1;
+
         entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-        uint32_t signature = RENDER_SYSTEM_SIGNATURE;
+        uint32_t signature = RENDER_SYSTEM_SIGNATURE | COLLISION_SYSTEM_SIGNATURE;
         if(!my_building)
         {
             signature |= XRAY_SYSTEM_SIGNATURE;
@@ -533,6 +659,7 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
         component_manager.AddComponent<Transform>(entity_id, transform);
         component_manager.AddComponent<Quad>(entity_id, quad);
         component_manager.AddComponent<Texture>(entity_id, texture);
+        component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
 
         entity_id++;
 
@@ -552,14 +679,25 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
 
         if(my_building)
         {
+            quad.normal[0] = 0;
+            quad.normal[1] = 0;
+            quad.normal[2] = 1;
+        }
+        else
+        {
+            quad.normal[0] = 0;
+            quad.normal[1] = 0;
+            quad.normal[2] = -1;
+        }
+
+        if(my_building)
+        {
             texture.texture_index = 2;
             texture.position[0] = 0;
             texture.position[1] = 256 - (256 / 3);
             texture.size[0] = 256;
             texture.size[1] = 256 / 3;
-            texture.color[0] = 0;
-            texture.color[1] = 1;
-            texture.color[2] = 0;
+            texture.use_light = true;
         }
         else
         {
@@ -568,9 +706,7 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             texture.position[1] = 0;
             texture.size[0] = 64;
             texture.size[1] = 64;
-            texture.color[0] = 0;
-            texture.color[1] = 1;
-            texture.color[2] = 0;
+            texture.use_light = false;
         }
 
         entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
@@ -598,17 +734,32 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
         transform.scale[1] = 0;
         transform.scale[2] = 0;
 
+        if(my_building)
+        {
+            printf("%f %f %f\n", transform.position[0], transform.position[1], transform.position[2]);
+        }
+
         quad.extent[0] = window_width;
         quad.extent[1] = wall_height / 3;
+
+        if(my_building)
+        {
+            quad.normal[0] = 0;
+            quad.normal[1] = 0;
+            quad.normal[2] = 1;
+        }
+        else
+        {
+            quad.normal[0] = 0;
+            quad.normal[1] = 0;
+            quad.normal[2] = -1;
+        }
 
         texture.texture_index = 1;
         texture.position[0] = 0;
         texture.position[1] = 320;
         texture.size[0] = 128;
         texture.size[1] = 192;
-        texture.color[0] = 0;
-        texture.color[1] = 1;
-        texture.color[2] = 0;
 
         entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
         signature = RENDER_SYSTEM_SIGNATURE;
@@ -633,7 +784,14 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     transform.position[1] = wall_height / 2 + offset[1];
     transform.position[2] = back_wall_offset + offset[2];
     transform.rotation[0] = 0;
-    transform.rotation[1] = 0;
+    if(my_building)
+    {
+        transform.rotation[1] = 180;
+    }
+    else
+    {
+        transform.rotation[1] = 0;
+    }
     transform.rotation[2] = 0;
     transform.scale[0] = 0;
     transform.scale[1] = 0;
@@ -642,6 +800,19 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     Quad quad;
     quad.extent[0] = wall_total_width;
     quad.extent[1] = wall_height;
+
+    if(my_building)
+    {
+        quad.normal[0] = 0;
+        quad.normal[1] = 0;
+        quad.normal[2] = -1;
+    }
+    else
+    {
+        quad.normal[0] = 0;
+        quad.normal[1] = 0;
+        quad.normal[2] = 1;
+    }
     
     Texture texture;
     texture.texture_index = 2;
@@ -649,9 +820,7 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     texture.position[1] = 0;
     texture.size[0] = 256;
     texture.size[1] = 256;
-    texture.color[0] = 0;
-    texture.color[1] = 1;
-    texture.color[2] = 0;
+    texture.use_light = true;
     
     BoundingBox bounding_box;
     bounding_box.extent[0] = wall_total_width;
@@ -659,9 +828,9 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     bounding_box.extent[2] = 1;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
-                                                    PHYSICS_SYSTEM_SIGNATURE | 
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE |
                                                     COLLISION_SYSTEM_SIGNATURE);
+    entity_manager.SetEntityTag(entity_id, "back_wall");
 
     component_manager.AddComponent<Transform>(entity_id, transform);
     component_manager.AddComponent<Quad>(entity_id, quad);
@@ -675,7 +844,7 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     transform.position[1] = wall_height / 2 + offset[1];
     transform.position[2] = 0 + offset[2];
     transform.rotation[0] = 0;
-    transform.rotation[1] = 90;
+    transform.rotation[1] = -90;
     transform.rotation[2] = 0;
     transform.scale[0] = 0;
     transform.scale[1] = 0;
@@ -683,23 +852,23 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     
     quad.extent[0] = 2;
     quad.extent[1] = wall_height;
+    quad.normal[0] = -1;
+    quad.normal[1] = 0;
+    quad.normal[2] = 0;
     
     texture.texture_index = 2;
     texture.position[0] = 0;
     texture.position[1] = 0;
     texture.size[0] = 256;
     texture.size[1] = 256;
-    texture.color[0] = 0;
-    texture.color[1] = 1;
-    texture.color[2] = 0;
+    texture.use_light = true;
     
     bounding_box.extent[0] = 1;
     bounding_box.extent[1] = wall_height;
     bounding_box.extent[2] = 2;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
-                                                    PHYSICS_SYSTEM_SIGNATURE | 
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE |
                                                     COLLISION_SYSTEM_SIGNATURE);
     entity_manager.SetEntityTag(entity_id, "side_wall");
 
@@ -723,23 +892,23 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     
     quad.extent[0] = 2;
     quad.extent[1] = wall_height;
+    quad.normal[0] = 1;
+    quad.normal[1] = 0;
+    quad.normal[2] = 0;
     
     texture.texture_index = 2;
     texture.position[0] = 0;
     texture.position[1] = 0;
     texture.size[0] = 256;
     texture.size[1] = 256;
-    texture.color[0] = 0;
-    texture.color[1] = 1;
-    texture.color[2] = 0;
+    texture.use_light = true;
     
     bounding_box.extent[0] = 1;
     bounding_box.extent[1] = wall_height;
     bounding_box.extent[2] = 2;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
-                                                    PHYSICS_SYSTEM_SIGNATURE | 
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE |
                                                     COLLISION_SYSTEM_SIGNATURE);
     entity_manager.SetEntityTag(entity_id, "side_wall");
 
@@ -754,7 +923,7 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     transform.position[0] = 0 + offset[0];
     transform.position[1] = 0 + offset[1];
     transform.position[2] = 0 + offset[2];
-    transform.rotation[0] = 90;
+    transform.rotation[0] = -90;
     transform.rotation[1] = 0;
     transform.rotation[2] = 0;
     transform.scale[0] = 0;
@@ -763,19 +932,19 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     
     quad.extent[0] = wall_total_width;
     quad.extent[1] = 2;
+    quad.normal[0] = 0;
+    quad.normal[1] = 1;
+    quad.normal[2] = 0;
     
     texture.texture_index = 3;
     texture.position[0] = 0;
     texture.position[1] = 0;
     texture.size[0] = 128 * 50;
     texture.size[1] = 128 * 5;
-    texture.color[0] = 0;
-    texture.color[1] = 1;
-    texture.color[2] = 0;
+    texture.use_light = true;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
-                                                    PHYSICS_SYSTEM_SIGNATURE);
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE);
 
     component_manager.AddComponent<Transform>(entity_id, transform);
     component_manager.AddComponent<Quad>(entity_id, quad);
@@ -796,19 +965,19 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
     
     quad.extent[0] = wall_total_width;
     quad.extent[1] = 2;
+    quad.normal[0] = 0;
+    quad.normal[1] = -1;
+    quad.normal[2] = 0;
     
     texture.texture_index = 4;
     texture.position[0] = 0;
     texture.position[1] = 0;
     texture.size[0] = 128 * 50;
     texture.size[1] = 128 * 5;
-    texture.color[0] = 0;
-    texture.color[1] = 1;
-    texture.color[2] = 0;
+    texture.use_light = true;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
-                                                    PHYSICS_SYSTEM_SIGNATURE);
+    entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE);
 
     component_manager.AddComponent<Transform>(entity_id, transform);
     component_manager.AddComponent<Quad>(entity_id, quad);
@@ -816,13 +985,15 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
 
     entity_id++;
 
+    vec3 enemy_extent = { 0.75, 1.5, .75 };
+
     if(!my_building)
     {
         for(uint32_t i = 0; i < 1; i++)
         {
             // Enemy Entity
-            transform.position[0] = 0 + offset[0];
-            transform.position[1] = .75 + offset[1];
+            transform.position[0] = (rand() % (int)(wall_total_width - enemy_extent[0])) - ((wall_total_width - enemy_extent[0]) / 2) + offset[0];
+            transform.position[1] = enemy_extent[1] / 2 + offset[1];
             transform.position[2] = 0 + offset[2];
             transform.rotation[0] = 0;
             transform.rotation[1] = 0;
@@ -831,25 +1002,24 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             transform.scale[1] = 0;
             transform.scale[2] = 0;
             
-            quad.extent[0] = .75;
-            quad.extent[1] = 1.5;
-            
+            quad.extent[0] = enemy_extent[0];
+            quad.extent[1] = enemy_extent[1];
+            float speed = ((rand() % 1) == 1) ? 1 : -1;
+
             texture.texture_index = 6;
             texture.position[0] = 0;
-            texture.position[1] = 0;
+            texture.position[1] = speed > 0 ? 0 : 128;
             texture.size[0] = 64;
             texture.size[1] = 128;
-            texture.color[0] = 0;
-            texture.color[1] = 1;
-            texture.color[2] = 0;
+            texture.use_light = true;
 
             BoundingBox bounding_box;
-            bounding_box.extent[0] = .75;
-            bounding_box.extent[1] = 1.5;
-            bounding_box.extent[2] = .75;
+            bounding_box.extent[0] = enemy_extent[0];
+            bounding_box.extent[1] = enemy_extent[1];
+            bounding_box.extent[2] = enemy_extent[2];
 
             RigidBody rigid_body;
-            rigid_body.velocity[0] = 1;
+            rigid_body.velocity[0] = speed;
             rigid_body.velocity[1] = 0;
             rigid_body.velocity[2] = 0;
             rigid_body.acceleration[0] = 0;
@@ -862,6 +1032,9 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             animation.num_frames = 4;
             animation.paused = false;
             animation.speed = 0.25;
+
+            AIData ai_data;
+            ai_data.speed = speed;
 
             entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
             entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
@@ -876,6 +1049,7 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
             component_manager.AddComponent<RigidBody>(entity_id, rigid_body);
             component_manager.AddComponent<Animation>(entity_id, animation);
+            component_manager.AddComponent<AIData>(entity_id, ai_data);
 
             entity_id++;
         }

@@ -13,6 +13,7 @@
 #include "Timer.hpp"
 #include "Bounds.hpp"
 #include "Label.hpp"
+#include "AIData.hpp"
 
 class ComponentManager
 {
@@ -38,6 +39,7 @@ class ComponentManager
     ComponentPool<Timer> m_timer_pool;
     ComponentPool<Bounds> m_bounds_pool;
     ComponentPool<Label> m_label_pool;
+    ComponentPool<AIData> m_ai_data_pool;
 };
 
 #endif // COMPONENT_MANAGER_HPP

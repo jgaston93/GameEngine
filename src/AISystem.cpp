@@ -1,5 +1,7 @@
 #include "AISystem.hpp"
 
+#include <cstdio>
+
 
 AISystem::AISystem(MessageBus& message_bus) : 
     System(message_bus, AI_SYSTEM_SIGNATURE)
@@ -14,17 +16,34 @@ void AISystem::HandleMessage(Message message)
 {
     if(message.message_type == MessageType::COLLISION)
     {
-        uint32_t enemy_id = message.message_data >> 16;
-        RigidBody& rigid_body = m_component_manager->GetComponent<RigidBody>(enemy_id);
-        rigid_body.velocity[0] = -rigid_body.velocity[0];
-        Texture& texture = m_component_manager->GetComponent<Texture>(enemy_id);
-        if(rigid_body.velocity[0] > 0)
+        
+        uint32_t entity_1_id = message.message_data >> 16;
+        uint32_t entity_2_id = message.message_data & 0x0000FFFF;
+
+        char* entity_1_tag = m_entity_manager->GetEntityTag(entity_1_id);
+        char* entity_2_tag = m_entity_manager->GetEntityTag(entity_2_id);
+
+        if(strcmp(entity_1_tag, "enemy") == 0)
         {
-            texture.position[0] = 0;
+            uint32_t enemy_id = entity_1_id;
+            RigidBody& rigid_body = m_component_manager->GetComponent<RigidBody>(enemy_id);
+            AIData& ai_data = m_component_manager->GetComponent<AIData>(enemy_id);
+            ai_data.speed = -ai_data.speed;
+            rigid_body.velocity[0] = ai_data.speed;
+            Texture& texture = m_component_manager->GetComponent<Texture>(enemy_id);
+            if(ai_data.speed > 0)
+            {
+                texture.position[1] = 0;
+            }
+            else
+            {
+                texture.position[1] = 128;
+            }
         }
-        else
+        else if(strncmp(entity_1_tag, "bullet", 6) == 0)
         {
-            texture.position[0] = 128;
+            uint32_t bullet_id = m_entity_manager->GetEntityId(entity_1_tag);
+            m_entity_manager->SetEntityState(bullet_id, EntityState::INACTIVE);
         }
     }
 }

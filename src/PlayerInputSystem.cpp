@@ -7,7 +7,12 @@
 
 PlayerInputSystem::PlayerInputSystem(MessageBus& message_bus, InputMap& input_map) : 
     System(message_bus, PLAYER_INPUT_SYSTEM_SIGNATURE), 
-    m_input_map(input_map)
+    m_input_map(input_map),
+    m_zoom_on(false),
+    m_xray_on(false),
+    m_shoot_timer(0),
+    m_num_bullets(32),
+    m_bullet_index(0)
 {
 
 }
@@ -18,14 +23,109 @@ PlayerInputSystem::~PlayerInputSystem()
 
 void PlayerInputSystem::HandleMessage(Message message)
 {
+    if(message.message_type == MessageType::COLLISION)
+    {
+        uint32_t entity_1_id = message.message_data >> 16;
+        uint32_t entity_2_id = message.message_data & 0x0000FFFF;
 
+        char* entity_1_tag = m_entity_manager->GetEntityTag(entity_1_id);
+        char* entity_2_tag = m_entity_manager->GetEntityTag(entity_2_id);
+
+        if(strncmp(entity_1_tag, "bullet", 6) == 0)
+        {
+            uint32_t bullet_id = m_entity_manager->GetEntityId(entity_1_tag);
+            m_entity_manager->SetEntityState(bullet_id, EntityState::INACTIVE);
+        }
+    }
 }
 
 void PlayerInputSystem::HandleEntity(uint32_t entity_id, float delta_time)
 {
+
+    // Handle zoom and xray commands
+    Message message;
+    bool send_message = false;
+    if(!m_xray_on && m_input_map.IsPressed(GLFW_KEY_E) && !m_zoom_on)
+    {
+        message.message_type = MessageType::XRAY;
+        message.message_data = 1;
+        m_xray_on = true;
+        send_message = true;
+    }
+    else if(m_xray_on && !m_input_map.IsPressed(GLFW_KEY_E))
+    {
+        message.message_type = MessageType::XRAY;
+        message.message_data = 0;
+        m_xray_on = false;
+        send_message = true;
+    }
+
+    uint32_t crosshair_entity_id = m_entity_manager->GetEntityId("crosshair");
+    
+    if(!m_zoom_on && m_input_map.IsPressed(GLFW_MOUSE_BUTTON_RIGHT) && !m_xray_on)
+    {
+        message.message_type = MessageType::ZOOM;
+        message.message_data = 1;
+        m_zoom_on = true;
+        send_message = true;
+        m_entity_manager->SetEntityState(crosshair_entity_id, EntityState::ACTIVE);
+    }
+    else if(m_zoom_on && !m_input_map.IsPressed(GLFW_MOUSE_BUTTON_RIGHT))
+    {
+        message.message_type = MessageType::ZOOM;
+        message.message_data = 0;
+        m_zoom_on = false;
+        send_message = true;
+        m_entity_manager->SetEntityState(crosshair_entity_id, EntityState::INACTIVE);
+    }
+
+    if(send_message)
+    {
+        m_message_bus.PostMessage(message);
+    }
+
+    
     RigidBody& rigid_body = m_component_manager->GetComponent<RigidBody>(entity_id);
     Transform& transform = m_component_manager->GetComponent<Transform>(entity_id);
 
+    // Handle bullet stuff
+    if(m_shoot_timer > 0)
+    {
+        m_shoot_timer -= delta_time;
+    }
+    if(m_zoom_on && m_shoot_timer <= 0 && m_input_map.IsPressed(GLFW_MOUSE_BUTTON_LEFT))
+    {
+        m_shoot_timer = 1;
+        char bullet_tag[10];
+        sprintf(bullet_tag, "bullet_%d", m_bullet_index);
+        uint32_t bullet_id = m_entity_manager->GetEntityId(bullet_tag);
+        Transform& bullet_transform = m_component_manager->GetComponent<Transform>(bullet_id);
+        RigidBody& bullet_rigid_body = m_component_manager->GetComponent<RigidBody>(bullet_id);
+
+        bullet_transform.position[0] = transform.position[0];
+        bullet_transform.position[1] = transform.position[1];
+        bullet_transform.position[2] = transform.position[2];
+
+        vec4 bullet_velocity = { 0.0, 0.0, -200.0, 1.0 };
+
+        mat4x4 rotation_matrix;
+        mat4x4_identity(rotation_matrix);
+        mat4x4_rotate_Z(rotation_matrix, rotation_matrix, transform.rotation[2] * M_PI / 180.0);
+        mat4x4_rotate_Y(rotation_matrix, rotation_matrix, transform.rotation[1] * M_PI / 180.0);
+        mat4x4_rotate_X(rotation_matrix, rotation_matrix, transform.rotation[0] * M_PI / 180.0);
+
+        vec4 rotated_bullet_veolcity;
+        mat4x4_mul_vec4(rotated_bullet_veolcity, rotation_matrix, bullet_velocity);
+
+        bullet_rigid_body.velocity[0] = rotated_bullet_veolcity[0];
+        bullet_rigid_body.velocity[1] = rotated_bullet_veolcity[1];
+        bullet_rigid_body.velocity[2] = rotated_bullet_veolcity[2];
+
+        m_entity_manager->SetEntityState(bullet_id, EntityState::ACTIVE);
+        m_entity_manager->SetEntitySignature(bullet_id, PHYSICS_SYSTEM_SIGNATURE | COLLISION_SYSTEM_SIGNATURE);
+    }
+
+    // Handle player movement    
     float player_velocity = 4;
     float player_rotation_velocity = 2000;
 

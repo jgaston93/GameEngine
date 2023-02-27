@@ -5,7 +5,9 @@
 InputMap::InputMap(uint32_t num_inputs) : m_max_num_inupts(num_inputs),
                                           m_num_inputs(0),
                                           m_input_map(new bool[num_inputs]),
-                                          m_input_index_map(new uint32_t[num_inputs])
+                                          m_input_index_map(new uint32_t[num_inputs]),
+                                          m_mouse_pos_x(0),
+                                          m_mouse_pos_y(0)
 {
     memset(m_input_map, 0, num_inputs * sizeof(bool));
     memset(m_input_index_map, 0, num_inputs * sizeof(uint32_t));

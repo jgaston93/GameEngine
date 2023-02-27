@@ -51,7 +51,7 @@ struct UIVertexData
 };
 
 UISystem::UISystem(MessageBus& message_bus, GLFWwindow* window) : 
-    System(message_bus, UI_SYSTEM_SIGNATURE),
+    System(message_bus, UI_SYSTEM_IMAGE_SIGNATURE),
     m_window(window)
 {   
     glGenTextures(1, &m_ui_texture);
@@ -134,65 +134,102 @@ void UISystem::HandleMessage(Message message)
 
 void UISystem::HandleEntity(uint32_t entity_id, float delta_time)
 {
-    Transform& transform = m_component_manager->GetComponent<Transform>(entity_id);
-    Label& label = m_component_manager->GetComponent<Label>(entity_id);
+    uint32_t signature = m_entity_manager->GetEntitySignature(entity_id);
 
-    vec2 vertices_positions[4] = { { transform.position[0],                                            transform.position[1] + character_extent[1] * transform.scale[1] },
-                                   { transform.position[0],                                            transform.position[1]                                            },
-                                   { transform.position[0] + character_extent[0] * transform.scale[0], transform.position[1] + character_extent[1] * transform.scale[1] },
-                                   { transform.position[0] + character_extent[0] * transform.scale[0], transform.position[1]                                            } };
-
-    int width, height;
-    glfwGetFramebufferSize(m_window, &width, &height);
-    uint32_t label_length = strlen(label.text);
-
-    for(uint32_t i = 0; i < label_length; i++)
+    if(signature & UI_SYSTEM_TEXT_SIGNATURE)
     {
-        char character = label.text[i];
-        uint32_t character_index = 0;
-        vec2 texture_start_index = { 0, 0 };
-        
-        if('A' <= character && character <= 'Z')
+        Transform& transform = m_component_manager->GetComponent<Transform>(entity_id);
+        Label& label = m_component_manager->GetComponent<Label>(entity_id);
+
+        vec2 vertices_positions[4] = { { transform.position[0],                                            transform.position[1] + character_extent[1] * transform.scale[1] },
+                                       { transform.position[0],                                            transform.position[1]                                            },
+                                       { transform.position[0] + character_extent[0] * transform.scale[0], transform.position[1] + character_extent[1] * transform.scale[1] },
+                                       { transform.position[0] + character_extent[0] * transform.scale[0], transform.position[1]                                            } };
+
+        int width, height;
+        glfwGetFramebufferSize(m_window, &width, &height);
+        uint32_t label_length = strlen(label.text);
+
+        for(uint32_t i = 0; i < label_length; i++)
         {
-            character_index = character - 'A';
-            texture_start_index[0] = alpha_start_index[0] + character_index * character_stride;
-            texture_start_index[1] = alpha_start_index[1];
+            char character = label.text[i];
+            uint32_t character_index = 0;
+            vec2 texture_start_index = { 0, 0 };
+            
+            if('A' <= character && character <= 'Z')
+            {
+                character_index = character - 'A';
+                texture_start_index[0] = alpha_start_index[0] + character_index * character_stride;
+                texture_start_index[1] = alpha_start_index[1];
+            }
+            else if('0' <= character && character <= '9')
+            {
+                character_index = character - '0';
+                texture_start_index[0] = numeric_start_index[0] + character_index * character_stride;
+                texture_start_index[1] = numeric_start_index[1];
+            }
+            else if(character == ' ')
+            {
+                character_index = 26;
+                texture_start_index[0] = alpha_start_index[0] + character_index * character_stride;
+                texture_start_index[1] = alpha_start_index[1];
+            }
+            
+            UIVertexData vertices[4];
+
+            vertices[0] = { 2.0f * (vertices_positions[0][0] + character_stride * i * transform.scale[0]) / width - 1.0f, 2.0f * vertices_positions[0][1] / height - 1.0f, 0,
+                            label.color[0], label.color[1], label.color[2],
+                            texture_start_index[0] / texture_size[0], (texture_start_index[1] + character_extent[1]) / texture_size[1] };
+                            
+            vertices[1] = { 2.0f * (vertices_positions[1][0] + character_stride * i * transform.scale[0]) / width - 1.0f, 2.0f * vertices_positions[1][1] / height - 1.0f, 0,
+                            label.color[0], label.color[1], label.color[2],
+                            texture_start_index[0] / texture_size[0], texture_start_index[1] / texture_size[1] };
+
+            vertices[2] = { 2.0f * (vertices_positions[2][0] + character_stride * i * transform.scale[0]) / width - 1.0f, 2.0f * vertices_positions[2][1] / height - 1.0f, 0,
+                            label.color[0], label.color[1], label.color[2],
+                            (texture_start_index[0] + character_extent[0]) / texture_size[0], (texture_start_index[1] + character_extent[1]) / texture_size[1] };
+                            
+            vertices[3] = { 2.0f * (vertices_positions[3][0] + character_stride * i * transform.scale[0]) / width - 1.0f, 2.0f * vertices_positions[3][1] / height - 1.0f, 0,
+                            label.color[0], label.color[1], label.color[2],
+                            (texture_start_index[0] + character_extent[0]) / texture_size[0],  texture_start_index[1] / texture_size[1] };
+
+            glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_DYNAMIC_DRAW);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         }
-        else if('0' <= character && character <= '9')
-        {
-            character_index = character - '0';
-            texture_start_index[0] = numeric_start_index[0] + character_index * character_stride;
-            texture_start_index[1] = numeric_start_index[1];
-        }
-        else if(character == ' ')
-        {
-            character_index = 26;
-            texture_start_index[0] = alpha_start_index[0] + character_index * character_stride;
-            texture_start_index[1] = alpha_start_index[1];
-        }
+    }
+    else if(signature & UI_SYSTEM_IMAGE_SIGNATURE)
+    {
+        Transform& transform = m_component_manager->GetComponent<Transform>(entity_id);
+        Texture& texture = m_component_manager->GetComponent<Texture>(entity_id);
+        Quad& quad = m_component_manager->GetComponent<Quad>(entity_id);
+
+        float half_width = quad.extent[0] / 2;
+        float half_height = quad.extent[1] / 2;
+
+        int width, height;
+        glfwGetFramebufferSize(m_window, &width, &height);
         
         UIVertexData vertices[4];
 
-        vertices[0] = { 2.0f * (vertices_positions[0][0] + character_stride * i * transform.scale[0]) / width - 1.0f, 2.0f * vertices_positions[0][1] / height - 1.0f, 0,
-                        label.color[0], label.color[1], label.color[2],
-                        texture_start_index[0] / texture_size[0], (texture_start_index[1] + character_extent[1]) / texture_size[1] };
-                        
-        vertices[1] = { 2.0f * (vertices_positions[1][0] + character_stride * i * transform.scale[0]) / width - 1.0f, 2.0f * vertices_positions[1][1] / height - 1.0f, 0,
-                        label.color[0], label.color[1], label.color[2],
-                        texture_start_index[0] / texture_size[0], texture_start_index[1] / texture_size[1] };
+        vertices[0] = { 2.0f * (-half_width + transform.position[0]) / width - 1.0f, 2.0f * (half_height + transform.position[1]) / height - 1.0f, 0,
+                        0, 0, 0,
+                        texture.position[0] / 512, (texture.position[1] + texture.size[1]) / 512 };
 
-        vertices[2] = { 2.0f * (vertices_positions[2][0] + character_stride * i * transform.scale[0]) / width - 1.0f, 2.0f * vertices_positions[2][1] / height - 1.0f, 0,
-                        label.color[0], label.color[1], label.color[2],
-                        (texture_start_index[0] + character_extent[0]) / texture_size[0], (texture_start_index[1] + character_extent[1]) / texture_size[1] };
-                        
-        vertices[3] = { 2.0f * (vertices_positions[3][0] + character_stride * i * transform.scale[0]) / width - 1.0f, 2.0f * vertices_positions[3][1] / height - 1.0f, 0,
-                        label.color[0], label.color[1], label.color[2],
-                        (texture_start_index[0] + character_extent[0]) / texture_size[0],  texture_start_index[1] / texture_size[1] };
+        vertices[1] = { 2.0f * (-half_width + transform.position[0]) / width - 1.0f, 2.0f * (-half_height + transform.position[1]) / height - 1.0f, 0,
+                        0, 0, 0,
+                        texture.position[0] / 512, texture.position[1] / 512 };
+
+        vertices[2] = { 2.0f * (half_width + transform.position[0]) / width - 1.0f, 2.0f * (half_height + transform.position[1]) / height - 1.0f, 0,
+                        0, 0, 0,
+                        (texture.position[0] + texture.size[0]) / 512, (texture.position[1] + texture.size[1]) / 512 };
+
+        vertices[3] = { 2.0f * (half_width + transform.position[0]) / width - 1.0f, 2.0f * (-half_height + transform.position[1]) / height - 1.0f, 0,
+                        0, 0, 0,
+                        (texture.position[0] + texture.size[0]) / 512, texture.position[1] / 512 };
 
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_DYNAMIC_DRAW);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
-
 }
 
 void UISystem::Update(float delta_time)
@@ -221,7 +258,8 @@ void UISystem::Update(float delta_time)
     for(uint32_t i = 0; i < num_entities; i++)
     {
         if(m_entity_manager->GetEntityState(i) == EntityState::ACTIVE &&
-            (m_entity_manager->GetEntitySignature(i) & m_system_signature))
+            (m_entity_manager->GetEntitySignature(i) & UI_SYSTEM_IMAGE_SIGNATURE ||
+             m_entity_manager->GetEntitySignature(i) & UI_SYSTEM_TEXT_SIGNATURE ))
         {
             HandleEntity(i, delta_time);
         }

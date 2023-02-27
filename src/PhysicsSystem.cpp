@@ -1,6 +1,36 @@
 #include <stdio.h>
+#include <limits>
 
 #include "PhysicsSystem.hpp"
+
+
+void GetInvEntryExit(float v, float min1, float max1, float min2, float max2, float& inv_entry, float& inv_exit)
+{
+    if(v > 0)
+    {
+        inv_entry = min2 - max1;
+        inv_exit = max2 - min1;
+    }
+    else
+    {
+        inv_entry = max2 - min1;
+        inv_exit = min2 - max1;
+    }
+}
+
+void GetEntryExit(float v, float inv_entry, float inv_exit, float& entry, float& exit)
+{
+    if(v == 0)
+    {
+        entry = -std::numeric_limits<float>::infinity();
+        exit = std::numeric_limits<float>::infinity();
+    }
+    else
+    {
+        entry = inv_entry / v;
+        exit = inv_exit / v;
+    }
+}
 
 
 PhysicsSystem::PhysicsSystem(MessageBus& message_bus) : 
@@ -28,9 +58,8 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
     rigid_body.velocity[1] += rigid_body.acceleration[1];
     rigid_body.velocity[2] += rigid_body.acceleration[2];
 
-    float delta_time_x = delta_time;
-    float delta_time_y = delta_time;
-    float delta_time_z = delta_time;
+    float move_time = delta_time;
+    int32_t collision_entity_id = -1;
     
     if(m_entity_manager->GetEntitySignature(entity_id) & COLLISION_SYSTEM_SIGNATURE)
     {
@@ -55,6 +84,30 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
         float intended_min_z = intended_z_position - half_depth;
         float intended_max_z = intended_z_position + half_depth;
 
+        // Calculate broadphase bounding box
+        float bp_min_x = min_x;
+        float bp_max_x = max_x;
+        float bp_min_y = min_y;
+        float bp_max_y = max_y;
+        float bp_min_z = min_z;
+        float bp_max_z = max_z;
+
+        if(rigid_body.velocity[0] != 0)
+        {
+            bp_min_x = rigid_body.velocity[0] > 0 ? min_x : intended_min_x;
+            bp_max_x = rigid_body.velocity[0] > 0 ? intended_max_x : min_x;
+        }
+        if(rigid_body.velocity[1] != 0)
+        {
+            bp_min_y = rigid_body.velocity[1] > 0 ? min_y : intended_min_y;
+            bp_max_y = rigid_body.velocity[1] > 0 ? intended_max_y : min_y;
+        }
+        if(rigid_body.velocity[2] != 0)
+        {
+            bp_min_z = rigid_body.velocity[2] > 0 ? min_z : intended_min_z;
+            bp_max_z = rigid_body.velocity[2] > 0 ? intended_max_z : min_z;
+        }
+
         uint32_t num_entities = m_entity_manager->GetNumEntities();
         for(uint32_t other_entity_id = 0; other_entity_id < num_entities; other_entity_id++)
         {
@@ -72,101 +125,72 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
                 float other_min_z = other_transform.position[2] - other_half_depth;
                 float other_max_z = other_transform.position[2] + other_half_depth;
 
-                bool collision_x = max_x >= other_min_x && other_max_x >= min_x;
-                bool collision_y = max_y >= other_min_y && other_max_y >= min_y;
-                bool collision_z = max_z >= other_min_z && other_max_z >= min_z;
-                bool intended_collision_x = intended_max_x >= other_min_x && other_max_x >= intended_min_x;
-                bool intended_collision_y = intended_max_y >= other_min_y && other_max_y >= intended_min_y;
-                bool intended_collision_z = intended_max_z >= other_min_z && other_max_z >= intended_min_z;
-                bool collision_detected = false;
+                bool collision_x = bp_max_x >= other_min_x && other_max_x >= bp_min_x;
+                bool collision_y = bp_max_y >= other_min_y && other_max_y >= bp_min_y;
+                bool collision_z = bp_max_z >= other_min_z && other_max_z >= bp_min_z;
 
-                if(intended_collision_x && collision_y && collision_z)
+
+                if(collision_x && collision_y && collision_z)
                 {
-                    float dx = 0;
-                    if(min_x < other_min_x)
+                    float xInvEntry, yInvEntry, zInvEntry;
+                    float xInvExit, yInvExit, zInvExit;
+                    float xEntry, yEntry, zEntry;
+                    float xExit, yExit, zExit;
+                    
+                    GetInvEntryExit(rigid_body.velocity[0], min_x, max_x, other_min_x, other_max_x, xInvEntry, xInvExit);
+                    GetInvEntryExit(rigid_body.velocity[1], min_y, max_y, other_min_y, other_max_y, yInvEntry, yInvExit);
+                    GetInvEntryExit(rigid_body.velocity[2], min_z, max_z, other_min_z, other_max_z, zInvEntry, zInvExit);
+
+                    GetEntryExit(rigid_body.velocity[0], xInvEntry, xInvExit, xEntry, xExit);
+                    GetEntryExit(rigid_body.velocity[1], yInvEntry, yInvExit, yEntry, yExit);
+                    GetEntryExit(rigid_body.velocity[2], zInvEntry, zInvExit, zEntry, zExit);
+
+                    float entry_time = std::max(std::max(xEntry, yEntry), zEntry);
+                    float exit_time = std::min(std::min(xExit, yExit), zExit);
+
+                    if(!(entry_time > exit_time || (xEntry < 0.0f && yEntry < 0.0f && zEntry < 0.0f) || xEntry > 1.0f || yEntry > 1.0f || zEntry > 1.0f))
                     {
-                        dx = other_min_x - max_x;
-                    }
-                    else if(min_x > other_min_x)
-                    {
-                        dx = min_x - other_max_x;
-                    }
-                    float x_time = abs(dx / rigid_body.velocity[0]);
-                    if(x_time < delta_time_x)
-                    {
-                        delta_time_x = x_time;
-                        collision_detected = true;
-                    }
-                }
-                if(collision_x && intended_collision_y && collision_z)
-                {
-                    float dy = 0;
-                    if(min_y < other_min_y)
-                    {
-                        dy = other_min_y - max_y;
-                    }
-                    else if(min_y > other_min_y)
-                    {
-                        dy = min_y - other_max_y;
-                    }
-                    float y_time = abs(dy / rigid_body.velocity[1]);
-                    if(y_time < delta_time_y)
-                    {
-                        delta_time_y = y_time;
-                        collision_detected = true;
-                    }
-                }
-                if(collision_x && collision_y && intended_collision_z)
-                {
-                    float dz = 0;
-                    if(min_z < other_min_z)
-                    {
-                        dz = other_min_z - max_z;
-                    }
-                    else if(min_z > other_min_z)
-                    {
-                        dz = min_z - other_max_z;
-                    }
-                    float z_time = abs(dz / rigid_body.velocity[2]);
-                    if(z_time < delta_time_z)
-                    {
-                        delta_time_z = z_time;
-                        collision_detected = true;
-                    }
-                }
-                if(collision_detected)
-                {
-                    char* entity_1_tag = m_entity_manager->GetEntityTag(entity_id);
-                    char* entity_2_tag = m_entity_manager->GetEntityTag(other_entity_id);
-                    if(strcmp(entity_1_tag, "enemy") == 0 && strcmp(entity_2_tag, "side_wall"))
-                    {
-                        Message message;
-                        message.message_type = MessageType::COLLISION;
-                        message.message_data = (entity_id << 16) + other_entity_id;
-                        m_message_bus.PostMessage(message);
+                        if(entry_time < move_time)
+                        {
+                            move_time = entry_time;
+                            collision_entity_id = other_entity_id;
+                        }
                     }
                 }
             }
         }
     }
 
-    transform.position[0] += rigid_body.velocity[0] * delta_time_x;
-    transform.position[1] += rigid_body.velocity[1] * delta_time_y;
-    transform.position[2] += rigid_body.velocity[2] * delta_time_z;
+    transform.position[0] += rigid_body.velocity[0] * move_time;
+    transform.position[1] += rigid_body.velocity[1] * move_time;
+    transform.position[2] += rigid_body.velocity[2] * move_time;
 
-    if(delta_time_x < delta_time)
+    if(move_time < delta_time)
     {
         rigid_body.acceleration[0] = 0;
         rigid_body.velocity[0] = 0;
-    }
-    if(delta_time_y < delta_time)
-    {
         rigid_body.acceleration[1] = 0;
         rigid_body.velocity[1] = 0;
-    }
-    if(delta_time_z < delta_time)
-    {
         rigid_body.acceleration[2] = 0;
         rigid_body.velocity[2] = 0;
+
+        
+        char* entity_1_tag = m_entity_manager->GetEntityTag(entity_id);
+        char* entity_2_tag = m_entity_manager->GetEntityTag(collision_entity_id);
+        if(strcmp(entity_1_tag, "enemy") == 0 && strcmp(entity_2_tag, "side_wall") == 0)
+        {
+            Message message;
+            message.message_type = MessageType::COLLISION;
+            message.message_data = (entity_id << 16) + collision_entity_id;
+            m_message_bus.PostMessage(message);
+        }
+        if(strncmp(entity_1_tag, "bullet", 6) == 0 && strcmp(entity_2_tag, "enemy") == 0)
+        {
+            Message message;
+            message.message_type = MessageType::COLLISION;
+            message.message_data = (entity_id << 16) + collision_entity_id;
+            m_message_bus.PostMessage(message);
+            printf("Hit!\n");
+        }
     }
 }
