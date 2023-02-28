@@ -22,6 +22,7 @@ struct PlayerInput
 
     PlayerState state;
     uint32_t score;
+    float timer;
 };
 
 #endif // PLAYER_INPUT_HPP

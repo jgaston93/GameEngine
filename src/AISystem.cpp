@@ -42,8 +42,10 @@ void AISystem::HandleMessage(Message message)
         }
         else if(strncmp(entity_1_tag, "bullet", 6) == 0)
         {
-            uint32_t bullet_id = m_entity_manager->GetEntityId(entity_1_tag);
-            m_entity_manager->SetEntityState(bullet_id, EntityState::INACTIVE);
+            RigidBody& rigid_body = m_component_manager->GetComponent<RigidBody>(entity_2_id);
+            AIData& ai_data = m_component_manager->GetComponent<AIData>(entity_2_id);
+            rigid_body.velocity[0] = 0;
+            ai_data.alive = false;
         }
     }
 }
@@ -54,18 +56,27 @@ void AISystem::HandleEntity(uint32_t entity_id, float delta_time)
     Transform& transform = m_component_manager->GetComponent<Transform>(entity_id);
     Animation& animation = m_component_manager->GetComponent<Animation>(entity_id);
     Texture& texture = m_component_manager->GetComponent<Texture>(entity_id);
+    AIData& ai_data = m_component_manager->GetComponent<AIData>(entity_id);
 
-    animation.counter += delta_time;
-    if(animation.counter > animation.speed)
+    if(ai_data.alive)
     {
-        animation.current_frame++;
-        texture.position[0] += 64;
-        if(animation.current_frame >= animation.num_frames)
+        animation.counter += delta_time;
+        if(animation.counter > animation.speed)
         {
-            animation.current_frame = 0;
-            texture.position[0] = 0;
+            animation.current_frame++;
+            texture.position[0] += 64;
+            if(animation.current_frame >= animation.num_frames)
+            {
+                animation.current_frame = 0;
+                texture.position[0] = 0;
+            }
+            animation.counter = 0;
         }
-        animation.counter = 0;
+    }
+    else if(transform.rotation[0] > -90)
+    {
+        transform.rotation[0] -= 100 * delta_time;
+        transform.position[1] = ai_data.initial_height - 0.70 * -(1 - ((90 - transform.rotation[0]) / 90));
     }
 
 }

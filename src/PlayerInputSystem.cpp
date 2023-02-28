@@ -193,4 +193,7 @@ void PlayerInputSystem::HandleEntity(uint32_t entity_id, float delta_time)
     rigid_body.velocity[0] = rotated_velocity[0];
     rigid_body.velocity[1] = rotated_velocity[1];
     rigid_body.velocity[2] = rotated_velocity[2];
+
+    if(transform.position[0] < -15) transform.position[0] = -15;
+    if(transform.position[0] > 15) transform.position[0] = 15;
 }

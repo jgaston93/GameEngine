@@ -5,6 +5,7 @@ struct AIData
 {
     float speed;
     bool alive;
+    float initial_height;
 };
 
 #endif // AI_DATA_HPP

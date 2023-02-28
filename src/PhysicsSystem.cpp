@@ -59,7 +59,11 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
     rigid_body.velocity[2] += rigid_body.acceleration[2];
 
     float move_time = delta_time;
+    float move_time_x = delta_time;
+    float move_time_y = delta_time;
+    float move_time_z = delta_time;
     int32_t collision_entity_id = -1;
+    vec3 normal = {0, 0, 0};
     
     if(m_entity_manager->GetEntitySignature(entity_id) & COLLISION_SYSTEM_SIGNATURE)
     {
@@ -155,25 +159,53 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
                             move_time = entry_time;
                             collision_entity_id = other_entity_id;
                         }
+                        if(entry_time == xEntry)
+                        {
+                            if(xInvEntry < 0)
+                            {
+                                normal[0] = 1;
+                            }
+                            else if(xInvEntry > 0)
+                            {
+                                normal[0] = -1;
+                            }
+                        }
+                        else if(entry_time == yEntry)
+                        {
+                            if(yInvEntry < 0)
+                            {
+                                normal[1] = 1;
+                            }
+                            else if(yInvEntry > 0)
+                            {
+                                normal[1] = -1;
+                            }
+                        }
+                        if(entry_time == zEntry)
+                        {
+                            if(zInvEntry < 0)
+                            {
+                                normal[2] = 1;
+                            }
+                            else if(zInvEntry > 0)
+                            {
+                                normal[2] = -1;
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    transform.position[0] += rigid_body.velocity[0] * move_time;
-    transform.position[1] += rigid_body.velocity[1] * move_time;
-    transform.position[2] += rigid_body.velocity[2] * move_time;
-
     if(move_time < delta_time)
     {
-        rigid_body.acceleration[0] = 0;
-        rigid_body.velocity[0] = 0;
-        rigid_body.acceleration[1] = 0;
-        rigid_body.velocity[1] = 0;
-        rigid_body.acceleration[2] = 0;
-        rigid_body.velocity[2] = 0;
 
+        float dotprod = (rigid_body.velocity[0] * normal[2] + rigid_body.velocity[1] * normal[1] + rigid_body.velocity[2] * normal[0]) * move_time;
+
+        transform.position[0] += dotprod * normal[2];
+        transform.position[1] += dotprod * normal[1];
+        transform.position[2] += dotprod * normal[0];
         
         char* entity_1_tag = m_entity_manager->GetEntityTag(entity_id);
         char* entity_2_tag = m_entity_manager->GetEntityTag(collision_entity_id);
@@ -184,13 +216,22 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
             message.message_data = (entity_id << 16) + collision_entity_id;
             m_message_bus.PostMessage(message);
         }
+        if(strncmp(entity_1_tag, "bullet", 6) == 0)
+        {
+            printf("Hit: %d\n", collision_entity_id);
+        }
         if(strncmp(entity_1_tag, "bullet", 6) == 0 && strcmp(entity_2_tag, "enemy") == 0)
         {
             Message message;
             message.message_type = MessageType::COLLISION;
             message.message_data = (entity_id << 16) + collision_entity_id;
             m_message_bus.PostMessage(message);
-            printf("Hit!\n");
         }
+    }
+    else
+    {
+        transform.position[0] += rigid_body.velocity[0] * delta_time;
+        transform.position[1] += rigid_body.velocity[1] * delta_time;
+        transform.position[2] += rigid_body.velocity[2] * delta_time;
     }
 }

@@ -232,6 +232,9 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     bounding_box.extent[1] = 1.5;
     bounding_box.extent[2] = 0.25;
 
+    PlayerInput player_input;
+    player_input.score = 0;
+
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, PLAYER_INPUT_SYSTEM_SIGNATURE |
                                                     PHYSICS_SYSTEM_SIGNATURE |
@@ -240,6 +243,7 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
 
     component_manager.AddComponent<Transform>(entity_id, transform);
     component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
+    component_manager.AddComponent<PlayerInput>(entity_id, player_input);
 
     entity_id++;
 
@@ -250,27 +254,27 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     float wall_height = 2.5;
 
     // Front collision box
-    // transform.position[0] = 0;
-    // transform.position[1] = wall_height / 2;
-    // transform.position[2] = -1;
-    // transform.rotation[0] = 0;
-    // transform.rotation[1] = 0;
-    // transform.rotation[2] = 0;
-    // transform.scale[0] = 0;
-    // transform.scale[1] = 0;
-    // transform.scale[2] = 0;
+    transform.position[0] = 0;
+    transform.position[1] = wall_height / 3 / 2;
+    transform.position[2] = -1;
+    transform.rotation[0] = 0;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 0;
+    transform.scale[1] = 0;
+    transform.scale[2] = 0;
     
-    // bounding_box.extent[0] = wall_total_width;
-    // bounding_box.extent[1] = wall_height;
-    // bounding_box.extent[2] = .25;
+    bounding_box.extent[0] = wall_total_width;
+    bounding_box.extent[1] = wall_height / 3;
+    bounding_box.extent[2] = .1;
 
-    // entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-    // entity_manager.SetEntitySignature(entity_id, COLLISION_SYSTEM_SIGNATURE);
+    entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
+    entity_manager.SetEntitySignature(entity_id, COLLISION_SYSTEM_SIGNATURE);
 
-    // component_manager.AddComponent<Transform>(entity_id, transform);
-    // component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
 
-    // entity_id++;
+    entity_id++;
 
     vec3 my_floor_offset = { 0, 0, 0 };
     GenerateFloor(entity_manager, component_manager, entity_id, my_floor_offset, num_windows, window_width, window_width, wall_total_width, wall_height, true);
@@ -569,13 +573,8 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             texture.use_light = false;
         }
 
-        BoundingBox bounding_box;
-        bounding_box.extent[0] = wall_width;
-        bounding_box.extent[1] = wall_height;
-        bounding_box.extent[2] = 0.1;
-
         entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-        uint32_t signature = RENDER_SYSTEM_SIGNATURE | COLLISION_SYSTEM_SIGNATURE;
+        uint32_t signature = RENDER_SYSTEM_SIGNATURE;
         if(!my_building)
         {
             signature |= XRAY_SYSTEM_SIGNATURE;
@@ -585,7 +584,6 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
         component_manager.AddComponent<Transform>(entity_id, transform);
         component_manager.AddComponent<Quad>(entity_id, quad);
         component_manager.AddComponent<Texture>(entity_id, texture);
-        component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
 
         entity_id++;
     }
@@ -642,14 +640,8 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             texture.use_light = false;
         }
 
-        
-        BoundingBox bounding_box;
-        bounding_box.extent[0] = window_width;
-        bounding_box.extent[1] = wall_height / 3;
-        bounding_box.extent[2] = 0.1;
-
         entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
-        uint32_t signature = RENDER_SYSTEM_SIGNATURE | COLLISION_SYSTEM_SIGNATURE;
+        uint32_t signature = RENDER_SYSTEM_SIGNATURE;
         if(!my_building)
         {
             signature |= XRAY_SYSTEM_SIGNATURE;
@@ -659,7 +651,6 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
         component_manager.AddComponent<Transform>(entity_id, transform);
         component_manager.AddComponent<Quad>(entity_id, quad);
         component_manager.AddComponent<Texture>(entity_id, texture);
-        component_manager.AddComponent<BoundingBox>(entity_id, bounding_box);
 
         entity_id++;
 
@@ -1035,6 +1026,8 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
 
             AIData ai_data;
             ai_data.speed = speed;
+            ai_data.alive = true;
+            ai_data.initial_height = transform.position[1];
 
             entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
             entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 
