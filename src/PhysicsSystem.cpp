@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <limits>
+#include <algorithm>
 
 #include "PhysicsSystem.hpp"
 
@@ -115,7 +116,7 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
         uint32_t num_entities = m_entity_manager->GetNumEntities();
         for(uint32_t other_entity_id = 0; other_entity_id < num_entities; other_entity_id++)
         {
-            if(other_entity_id != entity_id && m_entity_manager->GetEntitySignature(other_entity_id) & COLLISION_SYSTEM_SIGNATURE)
+            if(other_entity_id != entity_id && m_entity_manager->GetEntityState(other_entity_id) == EntityState::ACTIVE && m_entity_manager->GetEntitySignature(other_entity_id) & COLLISION_SYSTEM_SIGNATURE)
             {
                 BoundingBox& other_bounding_box = m_component_manager->GetComponent<BoundingBox>(other_entity_id);
                 Transform& other_transform = m_component_manager->GetComponent<Transform>(other_entity_id);
@@ -216,10 +217,7 @@ void PhysicsSystem::HandleEntity(uint32_t entity_id, float delta_time)
             message.message_data = (entity_id << 16) + collision_entity_id;
             m_message_bus.PostMessage(message);
         }
-        if(strncmp(entity_1_tag, "bullet", 6) == 0)
-        {
-            printf("Hit: %d\n", collision_entity_id);
-        }
+        
         if(strncmp(entity_1_tag, "bullet", 6) == 0 && strcmp(entity_2_tag, "enemy") == 0)
         {
             Message message;

@@ -135,7 +135,7 @@ int main(int argv, char* args[])
         input_map->AddInput(input_list[i]);
     }
     
-    const uint32_t num_entities = 174;
+    const uint32_t num_entities = 177;
     EntityManager entity_manager(num_entities);
     ComponentManager component_manager(num_entities);
     GenerateEntities(entity_manager, component_manager);
@@ -234,6 +234,8 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
 
     PlayerInput player_input;
     player_input.score = 0;
+    player_input.timer = 100;
+    player_input.state = PlayerState::INIT;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, PLAYER_INPUT_SYSTEM_SIGNATURE |
@@ -381,9 +383,36 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
 
     entity_id++;
 
-    // Test Label
-    transform.position[0] = 0;
-    transform.position[1] = 0;
+    // Timer Label
+    // transform.position[0] = (640 / 2) - (15 * 2) / 2;
+    // transform.position[1] = 480 - 25;
+    // transform.position[2] = 0;
+    // transform.rotation[0] = 0;
+    // transform.rotation[1] = 0;
+    // transform.rotation[2] = 0;
+    // transform.scale[0] = 1;
+    // transform.scale[1] = 1;
+    // transform.scale[2] = 1;
+
+    // Label label;
+    // label.color[0] = 0;
+    // label.color[1] = 1;
+    // label.color[2] = 0;
+    // label.text = new char[10];
+    // snprintf(label.text, 10, "00");
+
+    // entity_manager.SetEntityState(entity_id, EntityState::INACTIVE);
+    // entity_manager.SetEntitySignature(entity_id, UI_SYSTEM_TEXT_SIGNATURE);
+    // entity_manager.SetEntityTag(entity_id, "timer_entity");
+
+    // component_manager.AddComponent<Transform>(entity_id, transform);
+    // component_manager.AddComponent<Label>(entity_id, label);
+
+    // entity_id++;
+
+    // Timer Label
+    transform.position[0] = (640 / 2) - (15 * 2) / 2;
+    transform.position[1] = 480 - 25;
     transform.position[2] = 0;
     transform.rotation[0] = 0;
     transform.rotation[1] = 0;
@@ -391,16 +420,95 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     transform.scale[0] = 1;
     transform.scale[1] = 1;
     transform.scale[2] = 1;
-
+    
     Label label;
     label.color[0] = 0;
     label.color[1] = 1;
     label.color[2] = 0;
     label.text = new char[10];
-    snprintf(label.text, 10, "TEST");
+    snprintf(label.text, 10, "00");
+
+    entity_manager.SetEntityState(entity_id, EntityState::INACTIVE);
+    entity_manager.SetEntitySignature(entity_id, UI_SYSTEM_TEXT_SIGNATURE);
+    entity_manager.SetEntityTag(entity_id, "timer_entity");
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<Label>(entity_id, label);
+
+    entity_id++;
+
+    // Title Label
+    transform.position[0] = (640 / 2) - ((15 * 11 * 2) / 2);
+    transform.position[1] = (480 / 2) - ((22 * 2) / 2) + 22 * 3;
+    transform.position[2] = 0;
+    transform.rotation[0] = 0;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 2;
+    transform.scale[1] = 2;
+    transform.scale[2] = 2;
+
+    label.color[0] = 0;
+    label.color[1] = 1;
+    label.color[2] = 0;
+    label.text = new char[12];
+    snprintf(label.text, 12, "XRAY SNIPER");
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
     entity_manager.SetEntitySignature(entity_id, UI_SYSTEM_TEXT_SIGNATURE);
+    entity_manager.SetEntityTag(entity_id, "title_entity");
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<Label>(entity_id, label);
+
+    entity_id++;
+
+    // Win Label
+    transform.position[0] = (640 / 2) - ((15 * 3 * 2) / 2);
+    transform.position[1] = (480 / 2) - ((22 * 2) / 2) + 22 * 3;
+    transform.position[2] = 0;
+    transform.rotation[0] = 0;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 2;
+    transform.scale[1] = 2;
+    transform.scale[2] = 2;
+
+    label.color[0] = 0;
+    label.color[1] = 1;
+    label.color[2] = 0;
+    label.text = new char[12];
+    snprintf(label.text, 12, "WIN");
+
+    entity_manager.SetEntityState(entity_id, EntityState::INACTIVE);
+    entity_manager.SetEntitySignature(entity_id, UI_SYSTEM_TEXT_SIGNATURE);
+    entity_manager.SetEntityTag(entity_id, "win_entity");
+
+    component_manager.AddComponent<Transform>(entity_id, transform);
+    component_manager.AddComponent<Label>(entity_id, label);
+
+    entity_id++;
+
+    // Lose Label
+    transform.position[0] = (640 / 2) - ((15 * 4 * 2) / 2);
+    transform.position[1] = (480 / 2) - ((22 * 2) / 2) + 22 * 3;
+    transform.position[2] = 0;
+    transform.rotation[0] = 0;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.scale[0] = 2;
+    transform.scale[1] = 2;
+    transform.scale[2] = 2;
+
+    label.color[0] = 0;
+    label.color[1] = 1;
+    label.color[2] = 0;
+    label.text = new char[12];
+    snprintf(label.text, 12, "LOSE");
+
+    entity_manager.SetEntityState(entity_id, EntityState::INACTIVE);
+    entity_manager.SetEntitySignature(entity_id, UI_SYSTEM_TEXT_SIGNATURE);
+    entity_manager.SetEntityTag(entity_id, "lose_entity");
 
     component_manager.AddComponent<Transform>(entity_id, transform);
     component_manager.AddComponent<Label>(entity_id, label);
@@ -1028,6 +1136,12 @@ void GenerateFloor(EntityManager& entity_manager, ComponentManager& component_ma
             ai_data.speed = speed;
             ai_data.alive = true;
             ai_data.initial_height = transform.position[1];
+            ai_data.position[0] = transform.position[0];
+            ai_data.position[1] = transform.position[1];
+            ai_data.position[2] = transform.position[2];
+            ai_data.rotation[0] = transform.rotation[0];
+            ai_data.rotation[1] = transform.rotation[1];
+            ai_data.rotation[2] = transform.rotation[2];
 
             entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
             entity_manager.SetEntitySignature(entity_id, RENDER_SYSTEM_SIGNATURE | 

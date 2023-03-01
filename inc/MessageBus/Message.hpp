@@ -10,7 +10,8 @@ enum MessageType
     KEYRELEASE,
     COLLISION,
     ZOOM,
-    XRAY
+    XRAY,
+    RESTART
 };
 
 struct Message

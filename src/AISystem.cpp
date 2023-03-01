@@ -48,6 +48,27 @@ void AISystem::HandleMessage(Message message)
             ai_data.alive = false;
         }
     }
+    if(message.message_type == MessageType::RESTART)
+    {
+        uint32_t num_entites = m_entity_manager->GetNumEntities();
+        for(uint32_t i = 0; i < num_entites; i++)
+        {
+            if(m_entity_manager->GetEntitySignature(i) & AI_SYSTEM_SIGNATURE)
+            {
+                Transform& transform = m_component_manager->GetComponent<Transform>(i);
+                AIData& ai_data = m_component_manager->GetComponent<AIData>(i);
+                RigidBody& rigid_body = m_component_manager->GetComponent<RigidBody>(i);
+                transform.position[0] = ai_data.position[0];
+                transform.position[1] = ai_data.position[1];
+                transform.position[2] = ai_data.position[2];
+                transform.rotation[0] = ai_data.rotation[0];
+                transform.rotation[1] = ai_data.rotation[1];
+                transform.rotation[2] = ai_data.rotation[2];
+                rigid_body.velocity[0] = ai_data.speed;
+                ai_data.alive = true;
+            }
+        }
+    }
 }
 
 void AISystem::HandleEntity(uint32_t entity_id, float delta_time)

@@ -3,10 +3,9 @@
 
 enum PlayerState
 {
-    ALIVE,
-    DYING,
-    DEAD,
-    GONE,
+    INIT,
+    RUNNING,
+    GAMEOVER,
 };
 
 struct PlayerInput
