@@ -228,13 +228,13 @@ void GenerateEntities(EntityManager& entity_manager, ComponentManager& component
     transform.scale[2] = 0;
 
     BoundingBox bounding_box;
-    bounding_box.extent[0] = 0.25;
+    bounding_box.extent[0] = 0.15;
     bounding_box.extent[1] = 1.5;
-    bounding_box.extent[2] = 0.25;
+    bounding_box.extent[2] = 0.15;
 
     PlayerInput player_input;
     player_input.score = 0;
-    player_input.timer = 100;
+    player_input.timer = 60;
     player_input.state = PlayerState::INIT;
 
     entity_manager.SetEntityState(entity_id, EntityState::ACTIVE);
